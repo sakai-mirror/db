@@ -4,8 +4,10 @@
 <beans>
 
 	<bean id="org.sakaiproject.db.api.SqlService"
-		class="org.sakaiproject.db.impl.BasicSqlService"
-		init-method="init" destroy-method="destroy" singleton="true">
+			class="org.sakaiproject.db.impl.BasicSqlService"
+			init-method="init" destroy-method="destroy" singleton="true">
+
+		<property name="usageSessionService"><ref bean="org.sakaiproject.event.api.UsageSessionService"/></property>
 	
 		<property name="defaultDataSource">
 			<ref bean="javax.sql.DataSource" />
