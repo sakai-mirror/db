@@ -7,7 +7,7 @@
 			class="org.sakaiproject.db.impl.BasicSqlService"
 			init-method="init" destroy-method="destroy" singleton="true">
 
-		<property name="usageSessionService"><ref bean="org.sakaiproject.event.api.UsageSessionService"/></property>
+		<lookup-method name="usageSessionService" bean="org.sakaiproject.event.api.UsageSessionService" />
 	
 		<property name="defaultDataSource">
 			<ref bean="javax.sql.DataSource" />

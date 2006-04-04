@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 005, 2006 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
  * 
  * Licensed under the Educational Community License, Version 1.0 (the "License"); 
  * you may not use this file except in compliance with the License. 
@@ -58,7 +58,7 @@ import org.sakaiproject.exception.ServerOverloadException;
  * BasicSqlService implements the SqlService.
  * </p>
  */
-public class BasicSqlService implements SqlService
+public abstract class BasicSqlService implements SqlService
 {
 	private static final Log LOG = LogFactory.getLog(BasicSqlService.class);
 
@@ -74,22 +74,17 @@ public class BasicSqlService implements SqlService
 	protected boolean m_commitAfterRead = false;
 
 	/**********************************************************************************************************************************************************************************************************************************************************
-	 * Dependencies and their setter methods
+	 * Dependencies
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
-	/** Dependency: the usage session service. */
-	protected UsageSessionService m_usageSessionService = null;
-
 	/**
-	 * Dependency - set the usage session service.
-	 * 
-	 * @param value
-	 *        The usage session service.
+	 * @return the UsageSessionService collaborator.
 	 */
-	public void setUsageSessionService(UsageSessionService manager)
-	{
-		m_usageSessionService = manager;
-	}
+	protected abstract UsageSessionService usageSessionService();
+
+	/**********************************************************************************************************************************************************************************************************************************************************
+	 * Configuration
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * Configuration: should we do a commit after each single SQL read?
@@ -330,7 +325,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			StringBuffer buf = new StringBuffer();
 			if (fields != null)
 			{
@@ -488,7 +483,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			LOG.debug("Sql.dbReadBinary(): " + userId + "\n" + sql);
 		}
 
@@ -593,7 +588,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			LOG.debug("Sql.dbReadBinary(): " + userId + "\n" + sql);
 		}
 
@@ -750,7 +745,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			LOG.debug("Sql.dbWriteBinary(): " + userId + "\n" + sql + "  size:" + var.length);
 		}
 
@@ -949,7 +944,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			StringBuffer buf = new StringBuffer();
 			if (fields != null)
 			{
@@ -1112,7 +1107,7 @@ public class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			String userId = m_usageSessionService.getSessionId();
+			String userId = usageSessionService().getSessionId();
 			LOG.debug("Sql.dbReadBlobAndUpdate(): " + userId + "\n" + sql);
 		}
 
