@@ -37,7 +37,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.GregorianCalendar;
 import java.util.List;
@@ -52,6 +51,7 @@ import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.exception.ServerOverloadException;
+import org.sakaiproject.time.api.Time;
 
 /**
  * <p>
@@ -180,7 +180,7 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void init()
 	{
-		LOG.info(this + ".init()");
+		LOG.info("init()");
 
 		// if we are auto-creating our schema, check and create
 		if (m_autoDdl)
@@ -188,7 +188,7 @@ public abstract class BasicSqlService implements SqlService
 			ddl(getClass().getClassLoader(), "sakai_locks");
 		}
 
-		LOG.info(this + ".init() completed successfully");
+		LOG.info("init() completed successfully");
 	}
 
 	/**
@@ -196,7 +196,7 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void destroy()
 	{
-		LOG.info(this + ".destroy()");
+		LOG.info("destroy()");
 	}
 
 	/**********************************************************************************************************************************************************************************************************************************************************
