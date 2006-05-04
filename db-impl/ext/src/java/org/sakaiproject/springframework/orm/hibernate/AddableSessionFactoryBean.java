@@ -27,15 +27,15 @@ import java.util.List;
 import java.util.Iterator;
 import java.util.Collections;
 
-import net.sf.hibernate.HibernateException;
-import net.sf.hibernate.cfg.Configuration;
+import org.hibernate.HibernateException;
+import org.hibernate.cfg.Configuration;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.orm.hibernate.LocalSessionFactoryBean;
+import org.springframework.orm.hibernate3.LocalSessionFactoryBean;
 
 public class AddableSessionFactoryBean extends LocalSessionFactoryBean implements ApplicationContextAware
 {
@@ -48,7 +48,7 @@ public class AddableSessionFactoryBean extends LocalSessionFactoryBean implement
 	 * 
 	 * @param config
 	 *        the current Configuration object
-	 * @throws net.sf.hibernate.HibernateException
+	 * @throws org.hibernate.HibernateException
 	 *         in case of Hibernate initialization errors
 	 */
 	protected void postProcessConfiguration(Configuration config) throws HibernateException

@@ -23,8 +23,8 @@ package org.sakaiproject.springframework.orm.hibernate;
 
 import java.io.IOException;
 
-import net.sf.hibernate.MappingException;
-import net.sf.hibernate.cfg.Configuration;
+import org.hibernate.MappingException;
+import org.hibernate.cfg.Configuration;
 
 public interface AdditionalHibernateMappings
 {
