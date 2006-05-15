@@ -118,7 +118,7 @@ public abstract class BasicSqlService implements SqlService
 			LOG.debug("setVendor(String " + value + ")");
 		}
 
-		m_vendor = (value != null) ? value.toLowerCase() : null;
+		m_vendor = (value != null) ? value.toLowerCase().trim() : null;
 	}
 
 	/** if true, debug each sql command with timing. */
@@ -180,15 +180,13 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void init()
 	{
-		LOG.info("init()");
-
 		// if we are auto-creating our schema, check and create
 		if (m_autoDdl)
 		{
 			ddl(getClass().getClassLoader(), "sakai_locks");
 		}
 
-		LOG.info("init() completed successfully");
+		LOG.info("init(): vendor: " + m_vendor + " autoDDL: " + m_autoDdl);
 	}
 
 	/**
