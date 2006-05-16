@@ -152,6 +152,17 @@
 			</properties>
 		</dependency>
 
+		<!-- while not directly needed by hibernate, as long as we are deploying hbm+pojo jars to shared, we want them to be able to use this one dependency -ggolden -->
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>${sakai.commons.lang.version}</version>
+			<properties>
+				<!-- deploy dependency jar to "shared", "common" or "server": use <war.bundle>true</war.bundle> to include in war -->
+				<deploy.target>shared</deploy.target>
+			</properties>
+		</dependency>
+
 	</dependencies>
 	
 	<build>
