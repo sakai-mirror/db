@@ -28,6 +28,8 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.pool.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool.impl.GenericKeyedObjectPoolFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
@@ -39,6 +41,9 @@ import org.apache.commons.pool.impl.GenericObjectPool;
  */
 public class SakaiBasicDataSource extends BasicDataSource
 {
+	/** Our logger. */
+	private static Log M_log = LogFactory.getLog(SakaiBasicDataSource.class);
+
 	/** Configuration: to rollback each connection when returned to the pool. */
 	protected boolean m_rollbackOnReturn = false;
 
@@ -76,6 +81,7 @@ public class SakaiBasicDataSource extends BasicDataSource
 		else
 		{
 			setDefaultTransactionIsolation(PoolableConnectionFactory.UNKNOWN_TRANSACTIONISOLATION);
+			M_log.warn("invalid transaction isolation level: " + defaultTransactionIsolation);
 		}
 	}
 
