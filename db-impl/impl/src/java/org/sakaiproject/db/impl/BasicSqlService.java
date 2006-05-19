@@ -926,7 +926,7 @@ public abstract class BasicSqlService implements SqlService
 	 *        The connection to use.
 	 * @param failQuiet
 	 *        If true, don't log errors from statement failure
-	 * @return true if successful, false if not.
+	 * @return true if successful, false if not due to unique constraint violation or duplicate key (i.e. the record already exists) OR we are instructed to fail quiet.
 	 */
 	protected boolean dbWrite(String sql, Object[] fields, String lastField, Connection callerConnection, boolean failQuiet)
 	{
@@ -1032,16 +1032,37 @@ public abstract class BasicSqlService implements SqlService
 		}
 		catch (SQLException e)
 		{
-			// this is likely due to a key constraint problem...
-			if ((!failQuiet) || (m_showSql))
+			// is this due to a key constraint problem... check each vendor's error codes
+			boolean recordAlreadyExists = false;
+			if ("hsqldb".equals(m_vendor))
 			{
-				LOG.warn("Sql.dbWrite(): sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				recordAlreadyExists = e.getErrorCode() == -104;
 			}
+			else if ("mysql".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1062;
+			}
+			else if ("oracle".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1;
+			}
+
+			if (m_showSql)
+			{
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+			}
+
+			if (recordAlreadyExists || failQuiet) return false;
+
+			// something ELSE went wrong, so lest make a fuss			
+			LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+			// TODO: throw new RuntimeException("SQL failure");
 			return false;
 		}
 		catch (Exception e)
 		{
 			LOG.warn("Sql.dbWrite(): " + e);
+			// TODO: throw new RuntimeException("SQL failure");
 			return false;
 		}
 		finally
@@ -1068,6 +1089,7 @@ public abstract class BasicSqlService implements SqlService
 			catch (Exception e)
 			{
 				LOG.warn("Sql.dbWrite(): " + e);
+				// TODO: throw new RuntimeException("SQL failure");
 			}
 		}
 
