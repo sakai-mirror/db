@@ -54,27 +54,27 @@ public class SakaiBasicDataSource extends BasicDataSource
 	 */
 	public void setDefaultTransactionIsolationString(String defaultTransactionIsolation)
 	{
-		if (defaultTransactionIsolation == null)
+		if ((defaultTransactionIsolation == null) || (defaultTransactionIsolation.trim().length() == 0))
 		{
 			setDefaultTransactionIsolation(PoolableConnectionFactory.UNKNOWN_TRANSACTIONISOLATION);
 		}
-		else if (defaultTransactionIsolation.equalsIgnoreCase("TRANSACTION_NONE"))
+		else if (defaultTransactionIsolation.trim().equalsIgnoreCase("TRANSACTION_NONE"))
 		{
 			setDefaultTransactionIsolation(Connection.TRANSACTION_NONE);
 		}
-		else if (defaultTransactionIsolation.equalsIgnoreCase("TRANSACTION_READ_UNCOMMITTED"))
+		else if (defaultTransactionIsolation.trim().equalsIgnoreCase("TRANSACTION_READ_UNCOMMITTED"))
 		{
 			setDefaultTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
 		}
-		else if (defaultTransactionIsolation.equalsIgnoreCase("TRANSACTION_READ_COMMITTED"))
+		else if (defaultTransactionIsolation.trim().equalsIgnoreCase("TRANSACTION_READ_COMMITTED"))
 		{
 			setDefaultTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
 		}
-		else if (defaultTransactionIsolation.equalsIgnoreCase("TRANSACTION_REPEATABLE_READ"))
+		else if (defaultTransactionIsolation.trim().equalsIgnoreCase("TRANSACTION_REPEATABLE_READ"))
 		{
 			setDefaultTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
 		}
-		else if (defaultTransactionIsolation.equalsIgnoreCase("TRANSACTION_SERIALIZABLE"))
+		else if (defaultTransactionIsolation.trim().equalsIgnoreCase("TRANSACTION_SERIALIZABLE"))
 		{
 			setDefaultTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
 		}
