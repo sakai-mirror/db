@@ -1056,14 +1056,12 @@ public abstract class BasicSqlService implements SqlService
 
 			// something ELSE went wrong, so lest make a fuss			
 			LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
-			// TODO: throw new RuntimeException("SQL failure");
-			return false;
+			throw new RuntimeException("SqlService.dbWrite failure", e);
 		}
 		catch (Exception e)
 		{
 			LOG.warn("Sql.dbWrite(): " + e);
-			// TODO: throw new RuntimeException("SQL failure");
-			return false;
+			throw new RuntimeException("SqlService.dbWrite failure", e);
 		}
 		finally
 		{
@@ -1089,7 +1087,7 @@ public abstract class BasicSqlService implements SqlService
 			catch (Exception e)
 			{
 				LOG.warn("Sql.dbWrite(): " + e);
-				// TODO: throw new RuntimeException("SQL failure");
+				throw new RuntimeException("SqlService.dbWrite failure", e);
 			}
 		}
 
