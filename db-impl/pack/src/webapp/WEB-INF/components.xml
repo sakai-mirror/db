@@ -45,7 +45,7 @@
 		
 		<!-- The connection URL to be passed to our JDBC driver to establish a connection. -->
 		<property name="url">
-			<value>jdbc:hsqldb:.</value>
+			<value>jdbc:hsqldb:mem:sakai</value>
 		</property>
 		
 		<!-- The connection username to be passed to our JDBC driver to establish a connection. -->
