@@ -45,7 +45,7 @@
 		
 		<!-- The connection URL to be passed to our JDBC driver to establish a connection. -->
 		<property name="url">
-			<value>jdbc:hsqldb:.</value>
+			<value>jdbc:hsqldb:mem:sakai</value>
 		</property>
 		
 		<!-- The connection username to be passed to our JDBC driver to establish a connection. -->
@@ -117,7 +117,7 @@
 		  SQL SELECT statement that returns at least one row.
 		  Note: This has been shown to cause performance problems under Oracle: leave it unset. -->
 		<property name="validationQuery">
-			<value>select 1 from SYSTEM_USERS</value>
+			<value>select 1 from INFORMATION_SCHEMA.SYSTEM_USERS</value>
 		</property>
 		
 		<!-- The default auto-commit state of connections created by this pool. -->
