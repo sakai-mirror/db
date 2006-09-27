@@ -1562,6 +1562,12 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setLong(pos, l);
 					pos++;
 				}
+				else if (fields[i] instanceof Integer)
+				{
+					int n = ((Integer) fields[i]).intValue();
+					pstmt.setInt(pos, n);
+					pos++;
+				}
 				// %%% support any other types specially?
 				else
 				{
