@@ -55,9 +55,7 @@ public class AddableSessionFactoryBean extends LocalSessionFactoryBean implement
 	{
 		super.postProcessConfiguration(config);
 
-		// this method is deprecated, but for some reason,
-		// stuff doesn't work with the replacement
-		String[] names = applicationContext.getBeanDefinitionNames(AdditionalHibernateMappings.class);
+		String[] names = applicationContext.getBeanNamesForType(AdditionalHibernateMappings.class, false, false);
 
 		try
 		{
