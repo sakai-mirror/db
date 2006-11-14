@@ -221,4 +221,20 @@ public class SqlService
 
 		return service.getVendor();
 	}
+
+	public static Long getNextSequence(String tableName, java.sql.Connection conn)
+	{
+		org.sakaiproject.db.api.SqlService service = getInstance();
+		if (service == null) return null;
+
+		return service.getNextSequence(tableName, conn);
+	}
+
+	public static String getBooleanConstant(boolean value)
+	{
+		org.sakaiproject.db.api.SqlService service = getInstance();
+		if (service == null) return null;
+
+		return service.getBooleanConstant(value);
+	}
 }

@@ -1099,6 +1099,179 @@ public abstract class BasicSqlService implements SqlService
 	}
 
 	/**
+	 * Execute the "insert" sql, returning a possible auto-update field Long value
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param fields
+	 *        The array of fields for parameters.
+	 * @param callerConnection
+	 *        The connection to use.
+	 * @param autoColumn
+	 *        The name of the db column that will have auto-update - we will return the value used (leave null to disable this feature).
+	 * @return The auto-update value, or null
+	 */
+	public Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn)
+	{
+		if (LOG.isDebugEnabled())
+		{
+			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", Connection " + callerConnection + ")");
+		}
+
+		// for DEBUG
+		long start = 0;
+		long connectionTime = 0;
+
+		if (LOG.isDebugEnabled())
+		{
+			String userId = usageSessionService().getSessionId();
+			StringBuffer buf = new StringBuffer();
+			if (fields != null)
+			{
+				buf.append(fields[0]);
+				for (int i = 1; i < fields.length; i++)
+				{
+					buf.append(", ");
+					buf.append(fields[i]);
+				}
+			}
+			LOG.debug("Sql.dbInsert(): " + userId + "\n" + sql + "\n" + buf);
+		}
+
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		boolean autoCommit = false;
+		boolean resetAutoCommit = false;
+
+		boolean success = false;
+		Long rv = null;
+
+		try
+		{
+			if (callerConnection != null)
+			{
+				conn = callerConnection;
+			}
+			else
+			{
+				if (m_showSql) start = System.currentTimeMillis();
+				conn = borrowConnection();
+				if (m_showSql) connectionTime = System.currentTimeMillis() - start;
+
+				// make sure we have do not have auto commit - will change and reset if needed
+				autoCommit = conn.getAutoCommit();
+				if (autoCommit)
+				{
+					conn.setAutoCommit(false);
+					resetAutoCommit = true;
+				}
+			}
+
+			if (m_showSql) start = System.currentTimeMillis();
+			
+			if (autoColumn != null)
+			{
+				String[] autoColumns = new String[1];
+				autoColumns[0] = autoColumn;
+				pstmt = conn.prepareStatement(sql, autoColumns);
+			}
+			else
+			{
+				pstmt = conn.prepareStatement(sql);
+			}
+
+			// put in all the fields
+			int pos = prepareStatement(pstmt, fields);
+
+			int result = pstmt.executeUpdate();
+
+			ResultSet keys = pstmt.getGeneratedKeys();
+			if (keys != null)
+			{
+				if (keys.next())
+				{
+					rv = new Long(keys.getLong(1));
+				}
+			}
+
+			// commit unless we are in a transaction (provided with a connection)
+			if (callerConnection == null)
+			{
+				conn.commit();
+			}
+
+			// indicate success
+			success = true;
+		}
+		catch (SQLException e)
+		{
+			// is this due to a key constraint problem... check each vendor's error codes
+			boolean recordAlreadyExists = false;
+			if ("hsqldb".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == -104;
+			}
+			else if ("mysql".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1062;
+			}
+			else if ("oracle".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1;
+			}
+
+			if (m_showSql)
+			{
+				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+			}
+
+			if (recordAlreadyExists) return null;
+
+			// something ELSE went wrong, so lest make a fuss			
+			LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+			throw new RuntimeException("SqlService.dbInsert failure", e);
+		}
+		catch (Exception e)
+		{
+			LOG.warn("Sql.dbInsert(): " + e);
+			throw new RuntimeException("SqlService.dbInsert failure", e);
+		}
+		finally
+		{
+			try
+			{
+				if (null != pstmt) pstmt.close();
+				if ((null != conn) && (callerConnection == null))
+				{
+					// rollback on failure
+					if (!success)
+					{
+						conn.rollback();
+					}
+
+					// if we changed the auto commit, reset here
+					if (resetAutoCommit)
+					{
+						conn.setAutoCommit(autoCommit);
+					}
+					returnConnection(conn);
+				}
+			}
+			catch (Exception e)
+			{
+				LOG.warn("Sql.dbInsert(): " + e);
+				throw new RuntimeException("SqlService.dbInsert failure", e);
+			}
+		}
+
+		if (m_showSql)
+			debug("Sql.dbWrite(): len: " + "  time: " + connectionTime
+					+ " /  " + (System.currentTimeMillis() - start), sql, fields);
+
+		return rv;
+	}
+
+	/**
 	 * Read a single field BLOB from the db from one record, and update it's bytes with content.
 	 * 
 	 * @param sql
@@ -1568,6 +1741,11 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setInt(pos, n);
 					pos++;
 				}
+				else if (fields[i] instanceof Boolean)
+				{
+					pstmt.setBoolean(pos, ((Boolean) fields[i]).booleanValue());
+					pos++;
+				}
 				// %%% support any other types specially?
 				else
 				{
@@ -1829,5 +2007,38 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		this.longDataSource = slowDataSource;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public Long getNextSequence(String tableName, Connection conn)
+	{
+		if ("hsqldb".equals(m_vendor))
+		{
+			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL";	// TODO: dual for hsql?
+			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
+		}
+		
+		if ("oracle".equals(m_vendor))
+		{
+			String sql = "SELECT " + tableName + ".NEXTVAL FROM DUAL";
+			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	public String getBooleanConstant(boolean value)
+	{
+		if ("mysql".equals(m_vendor))
+		{
+			return value ? "true" : "false";
+		}
+		
+		return value ? "1" : "0";
 	}
 }

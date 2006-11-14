@@ -140,6 +140,21 @@ public interface SqlService
 	InputStream dbReadBinary(String sql, Object[] fields, boolean big) throws ServerOverloadException;
 
 	/**
+	 * Execute the "insert" sql, returning a possible auto-update field Long value
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param fields
+	 *        The array of fields for parameters.
+	 * @param callerConnection
+	 *        The connection to use.
+	 * @param autoColumn
+	 *        The name of the db column that will have auto-update - we will return the value used (leave null to disable this feature).
+	 * @return The auto-update value, or null
+	 */
+	Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn);
+
+	/**
 	 * Execute the "write" sql - no response.
 	 * 
 	 * @param sql
@@ -291,4 +306,24 @@ public interface SqlService
 	 *        The path name to the resource - vender string and .sql will be added
 	 */
 	void ddl(ClassLoader loader, String resource);
+	
+	/**
+	 * Get the next value from this sequence, for those technologies that support sequences. For the others, return null.
+	 * 
+	 * @param tableName
+	 *        The sequence table name
+	 * @param conn
+	 *        The database connection to use (it will use a new one if null).
+	 * @return The Integer value that is the next sequence, or null if sequences are not supported
+	 */
+	Long getNextSequence(String tableName, Connection conn);
+	
+	/**
+	 * Get the SQL statement constant for a Boolean or Bit field for this value.
+	 * 
+	 * @param value
+	 *        The value.
+	 * @return The SQL statement constant for a Boolean or Bit field for this value.
+	 */
+	String getBooleanConstant(boolean value);
 }
