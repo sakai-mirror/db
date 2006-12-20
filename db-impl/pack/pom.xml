@@ -115,14 +115,6 @@
 <!--properties:  deploy.target: shared -->
       <scope>provided</scope>
     </dependency>
-    <dependency>
-      
-      <groupId>xalan</groupId>
-      <artifactId>xalan</artifactId>
-      <version>2.6.0</version>
-<!--properties:  deploy.target: shared -->
-      <scope>provided</scope>
-    </dependency>
 <!-- while not directly needed by hibernate, as long as we are deploying hbm+pojo jars to shared, we want them to be able to use this one dependency -ggolden -->
     <dependency>
       
