@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
  * 
  * Licensed under the Educational Community License, Version 1.0 (the "License"); 
  * you may not use this file except in compliance with the License. 
@@ -1049,12 +1049,13 @@ public abstract class BasicSqlService implements SqlService
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
+						+ e);
 			}
 
 			if (recordAlreadyExists || failQuiet) return false;
 
-			// something ELSE went wrong, so lest make a fuss			
+			// something ELSE went wrong, so lest make a fuss
 			LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
 			throw new RuntimeException("SqlService.dbWrite failure", e);
 		}
@@ -1113,9 +1114,29 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn)
 	{
+		return dbInsert(callerConnection, sql, fields, autoColumn, null, 0);
+	}
+
+	/**
+	 * Execute the "insert" sql, returning a possible auto-update field Long value
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param fields
+	 *        The array of fields for parameters.
+	 * @param callerConnection
+	 *        The connection to use.
+	 * @param autoColumn
+	 *        The name of the db column that will have auto-update - we will return the value used (leave null to disable this feature).
+	 * @param last
+	 *        A stream to set as the last field.
+	 * @return The auto-update value, or null
+	 */
+	public Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn, InputStream last, int lastLength)
+	{
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", Connection " + callerConnection + ")");
+			LOG.debug("dbInsert(String " + sql + ", Object[] " + fields + ", Connection " + callerConnection + ")");
 		}
 
 		// for DEBUG
@@ -1168,7 +1189,7 @@ public abstract class BasicSqlService implements SqlService
 			}
 
 			if (m_showSql) start = System.currentTimeMillis();
-			
+
 			if (autoColumn != null)
 			{
 				String[] autoColumns = new String[1];
@@ -1182,6 +1203,12 @@ public abstract class BasicSqlService implements SqlService
 
 			// put in all the fields
 			int pos = prepareStatement(pstmt, fields);
+
+			// and the last one
+			if (last != null)
+			{
+				pstmt.setBinaryStream(pos, last, lastLength);
+			}
 
 			int result = pstmt.executeUpdate();
 
@@ -1222,13 +1249,16 @@ public abstract class BasicSqlService implements SqlService
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
+						+ " " + e);
 			}
 
 			if (recordAlreadyExists) return null;
 
-			// something ELSE went wrong, so lest make a fuss			
-			LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+			// something ELSE went wrong, so lest make a fuss
+			LOG
+					.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
+							+ " ", e);
 			throw new RuntimeException("SqlService.dbInsert failure", e);
 		}
 		catch (Exception e)
@@ -1265,8 +1295,7 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("Sql.dbWrite(): len: " + "  time: " + connectionTime
-					+ " /  " + (System.currentTimeMillis() - start), sql, fields);
+			debug("Sql.dbWrite(): len: " + "  time: " + connectionTime + " /  " + (System.currentTimeMillis() - start), sql, fields);
 
 		return rv;
 	}
@@ -2016,19 +2045,19 @@ public abstract class BasicSqlService implements SqlService
 	{
 		if ("hsqldb".equals(m_vendor))
 		{
-			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL";	// TODO: dual for hsql?
+			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL"; // TODO: dual for hsql?
 			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
 		}
-		
+
 		if ("oracle".equals(m_vendor))
 		{
 			String sql = "SELECT " + tableName + ".NEXTVAL FROM DUAL";
 			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
 		}
-		
+
 		return null;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -2038,7 +2067,7 @@ public abstract class BasicSqlService implements SqlService
 		{
 			return value ? "true" : "false";
 		}
-		
+
 		return value ? "1" : "0";
 	}
 }

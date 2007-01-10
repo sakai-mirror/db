@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
  * 
  * Licensed under the Educational Community License, Version 1.0 (the "License"); 
  * you may not use this file except in compliance with the License. 
@@ -153,6 +153,25 @@ public interface SqlService
 	 * @return The auto-update value, or null
 	 */
 	Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn);
+
+	/**
+	 * Execute the "insert" sql, returning a possible auto-update field Long value, with an additional stream parameter.
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param fields
+	 *        The array of fields for parameters.
+	 * @param callerConnection
+	 *        The connection to use.
+	 * @param autoColumn
+	 *        The name of the db column that will have auto-update - we will return the value used (leave null to disable this feature).
+	 * @param last
+	 *        An input stream to add as the last parameter.
+	 * @param lastLength
+	 *        The number of bytes in the input stream to write.
+	 * @return The auto-update value, or null
+	 */
+	Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn, InputStream last, int lastLength);
 
 	/**
 	 * Execute the "write" sql - no response.
