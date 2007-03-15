@@ -57,9 +57,9 @@
       <version>2.7.6rc1</version>
     </dependency>
     <dependency>
-      <groupId>net.sf.ehcache</groupId>
-      <artifactId>ehcache</artifactId>
-      <version>1.2.4</version>
+      	<groupId>${sakai.ehcache.groupId}</groupId>
+		<artifactId>${sakai.ehcache.artifactId}</artifactId>
+		<version>${sakai.ehcache.version}</version>
     </dependency>
     <dependency>
       <groupId>${sakai.hibernate.groupId}</groupId>
