@@ -101,9 +101,9 @@
 		</dependency>
 	
 		<dependency>
-			<groupId>net.sf.ehcache</groupId>
-			<artifactId>ehcache</artifactId>
-			<version>1.2.4</version>
+			<groupId>${sakai.ehcache.groupId}</groupId>
+      <artifactId>${sakai.ehcache.artifactId}</artifactId>
+      <version>${sakai.ehcache.version}</version>
 			<properties>
 				<!-- deploy dependency jar to "shared", "common" or "server": use <war.bundle>true</war.bundle> to include in war -->
 				<deploy.target>shared</deploy.target>
