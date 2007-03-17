@@ -741,14 +741,12 @@ public class BaseDbFlatStorage
 	 */
 	public void commitResource(Edit edit, Object fields[], ResourceProperties props)
 	{
-		commitResource(null, edit, fields, props, null);
+		commitResource(edit, fields, props, null);
 	}
 
 	/**
 	 * Commit the changes and release the lock - optionally in a transaction.
 	 * 
-	 * @param conn
-	 *        The Db Connection of the transaction (optional).
 	 * @param edit
 	 *        The Edit to commit.
 	 * @param fields
@@ -756,16 +754,16 @@ public class BaseDbFlatStorage
 	 * @param key
 	 *        The object key used to relate to the properties - if null, we use the object id to relate.
 	 */
-	public void commitResource(Connection conn, Edit edit, Object fields[], ResourceProperties props, Object key)
+	public void commitResource(Edit edit, Object fields[], ResourceProperties props, Object key)
 	{
 		// write out the properties
-		writeProperties(conn, edit, props, key);
+		writeProperties(edit, props, key);
 
 		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableUpdateFields) + " where ( "
 				+ m_resourceTableIdField + " = ? )";
 
 		// process the update
-		m_sql.dbWrite(conn, statement, updateFields(fields));
+		m_sql.dbWrite(statement, updateFields(fields));
 
 		if (m_locking)
 		{
@@ -778,7 +776,7 @@ public class BaseDbFlatStorage
 				Object lockFields[] = new Object[2];
 				lockFields[0] = m_resourceTableName;
 				lockFields[1] = internalRecordId(caseId(edit.getId()));
-				boolean ok = m_sql.dbWrite(conn, statement, lockFields);
+				boolean ok = m_sql.dbWrite(statement, lockFields);
 				if (!ok)
 				{
 					M_log.warn("commit: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
@@ -835,23 +833,36 @@ public class BaseDbFlatStorage
 	 */
 	public void removeResource(Edit edit)
 	{
-		removeResource(null, edit, null);
+		removeResource(edit, null);
 	}
 
 	/**
 	 * Remove this (locked) Resource.
 	 * 
-	 * @param conn
-	 *        Optional db connection to use.
 	 * @param edit
 	 *        The Edit to remove.
 	 * @param key
 	 *        The key to relate resource to properties, of if null, id is assumed.
 	 */
-	public void removeResource(Connection conn, Edit edit, Object key)
+	public void removeResource(final Edit edit, final Object key)
+	{
+		// do this in a transaction
+		m_sql.transact(new Runnable()
+		{
+			public void run()
+			{
+				removeResourceTx(edit, key);
+			}
+		}, "removeResource:" + edit.getId());
+	}
+	
+	/**
+	 * Transaction code to remove a resource.
+	 */
+	protected void removeResourceTx(Edit edit, Object key)
 	{
 		// remove the properties
-		deleteProperties(conn, edit, key);
+		deleteProperties(edit, key);
 
 		// form the SQL delete statement
 		String statement = "delete from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
@@ -860,7 +871,7 @@ public class BaseDbFlatStorage
 		fields[0] = caseId(edit.getId());
 
 		// process the delete statement
-		m_sql.dbWrite(conn, statement, fields);
+		m_sql.dbWrite(statement, fields);
 
 		if (m_locking)
 		{
@@ -873,7 +884,7 @@ public class BaseDbFlatStorage
 				Object lockFields[] = new Object[2];
 				lockFields[0] = m_resourceTableName;
 				lockFields[1] = internalRecordId(caseId(edit.getId()));
-				boolean ok = m_sql.dbWrite(conn, statement, lockFields);
+				boolean ok = m_sql.dbWrite(statement, lockFields);
 				if (!ok)
 				{
 					M_log.warn("remove: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
@@ -1046,9 +1057,9 @@ public class BaseDbFlatStorage
 	 * @param props
 	 *        The properties to write.
 	 */
-	public void writeProperties(Connection conn, Entity r, ResourceProperties props)
+	public void writeProperties(Entity r, ResourceProperties props)
 	{
-		writeProperties(conn, m_resourcePropertyTableName, m_resourceTableIdField, caseId(r.getId()), null, null, props);
+		writeProperties(m_resourcePropertyTableName, m_resourceTableIdField, caseId(r.getId()), null, null, props);
 	}
 
 	/**
@@ -1063,23 +1074,23 @@ public class BaseDbFlatStorage
 	 * @param key
 	 *        The key used to relate the props to the resource.
 	 */
-	public void writeProperties(Connection conn, Entity r, ResourceProperties props, Object key)
+	public void writeProperties(Entity r, ResourceProperties props, Object key)
 	{
 		if (key == null)
 		{
-			writeProperties(conn, m_resourcePropertyTableName, m_resourceTableIdField, caseId(r.getId()), null, null, props);
+			writeProperties(m_resourcePropertyTableName, m_resourceTableIdField, caseId(r.getId()), null, null, props);
 		}
 		else
 		{
-			writeProperties(conn, m_resourcePropertyTableName, m_resourceTableDbidField, key, null, null, props);
+			writeProperties(m_resourcePropertyTableName, m_resourceTableDbidField, key, null, null, props);
 		}
 	}
 
-	public void writeProperties(Connection conn, String table, String idField, Object id, String extraIdField, String extraId,
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
 			ResourceProperties props)
 	{
 		boolean deleteFirst = true;
-		writeProperties(conn, table, idField, id, extraIdField, extraId, props, deleteFirst);
+		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
 	}
 
 	/**
@@ -1088,110 +1099,74 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	public void writeProperties(Connection conn, String table, String idField, Object id, String extraIdField, String extraId,
-			ResourceProperties props, boolean deleteFirst)
+	public void writeProperties(final String table, final String idField, final Object id, final String extraIdField, final String extraId,
+			final ResourceProperties props, final boolean deleteFirst)
 	{
 		// if not properties table set, skip it
 		if (table == null) return;
 		if (props == null) return;
 
 		// do this in a transaction
-		Connection connection = conn;
-		boolean wasCommit = true;
-		try
+		m_sql.transact(new Runnable()
 		{
-			if (conn == null)
+			public void run()
 			{
-				connection = m_sql.borrowConnection();
-				wasCommit = connection.getAutoCommit();
-				connection.setAutoCommit(false);
+				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
+		}, "writeProperties:"+id);
+	}
 
-			String statement;
-			Object fields[];
+	/**
+	 * The transaction code that writes the properties.
+	 * 
+	 * @param r
+	 *        The resource for which properties are to be written.
+	 */
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
+			ResourceProperties props, boolean deleteFirst)
+	{
+		String statement;
+		Object fields[];
 
-			// if (true)
-			if (deleteFirst)
-			{
-				// delete what's there
-				statement = "delete from " + table + " where ( " + idField + " = ? )";
+		// if (true)
+		if (deleteFirst)
+		{
+			// delete what's there
+			statement = "delete from " + table + " where ( " + idField + " = ? )";
 
-				fields = new Object[1];
-				fields[0] = id;
-
-				// process the delete statement
-				m_sql.dbWrite(connection, statement, fields);
-			}
-
-			// the SQL statement
-			statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
-					+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
-					+ ((extraIdField != null) ? ",?" : "") + ")";
-
-			fields = new Object[((extraIdField != null) ? 4 : 3)];
+			fields = new Object[1];
 			fields[0] = id;
 
-			// process each property
-			for (Iterator i = props.getPropertyNames(); i.hasNext();)
-			{
-				String name = (String) i.next();
-				String value = props.getProperty(name);
-
-				fields[1] = name;
-				fields[2] = value;
-
-				if (extraIdField != null)
-				{
-					fields[3] = extraId;
-				}
-
-				// dont write it if there's only an empty string for value
-				if (value.length() > 0)
-				{
-					m_sql.dbWrite(connection, statement, fields);
-				}
-			}
-
-			// end the transaction
-			if (conn == null)
-			{
-				connection.commit();
-			}
+			// process the delete statement
+			m_sql.dbWrite(statement, fields);
 		}
-		catch (Exception e)
+
+		// the SQL statement
+		statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
+				+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
+				+ ((extraIdField != null) ? ",?" : "") + ")";
+
+		fields = new Object[((extraIdField != null) ? 4 : 3)];
+		fields[0] = id;
+
+		// process each property
+		for (Iterator i = props.getPropertyNames(); i.hasNext();)
 		{
-			if (connection != null)
+			String name = (String) i.next();
+			String value = props.getProperty(name);
+
+			fields[1] = name;
+			fields[2] = value;
+
+			if (extraIdField != null)
 			{
-				try
-				{
-					if (conn == null)
-					{
-						connection.rollback();
-					}
-				}
-				catch (Exception ee)
-				{
-					M_log.warn("writeProperties, while rolling back: " + ee);
-				}
+				fields[3] = extraId;
 			}
-			M_log.warn("writeProperties: " + e);
-		}
-		finally
-		{
-			if (connection != null)
+
+			// dont write it if there's only an empty string for value
+			if (value.length() > 0)
 			{
-				if (conn == null)
-				{
-					try
-					{
-						connection.setAutoCommit(wasCommit);
-					}
-					catch (Exception e)
-					{
-						M_log.warn("writeProperties, while setting auto commit: " + e);
-					}
-					m_sql.returnConnection(connection);
-				}
+				m_sql.dbWrite(statement, fields);
 			}
 		}
 	}
@@ -1202,11 +1177,11 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	public void writeProperties(Connection conn, String table, String idField, Object id, String extraIdField, String extraId,
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
 			Properties props)
 	{
 		boolean deleteFirst = true;
-		writeProperties(conn, table, idField, id, extraIdField, extraId, props, deleteFirst);
+		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
 	}
 
 	/**
@@ -1215,109 +1190,74 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	public void writeProperties(Connection conn, String table, String idField, Object id, String extraIdField, String extraId,
-			Properties props, boolean deleteFirst)
+	public void writeProperties(final String table, final String idField, final Object id, final String extraIdField, final String extraId,
+			final Properties props, final boolean deleteFirst)
 	{
 		// if not properties table set, skip it
 		if (table == null) return;
 		if (props == null) return;
 
 		// do this in a transaction
-		Connection connection = conn;
-		boolean wasCommit = true;
-		try
+		m_sql.transact(new Runnable()
 		{
-			if (conn == null)
+			public void run()
 			{
-				connection = m_sql.borrowConnection();
-				wasCommit = connection.getAutoCommit();
-				connection.setAutoCommit(false);
+				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
+		}, "writeProperties:"+id);
 
-			String statement;
-			Object[] fields;
+	}
 
-			if (deleteFirst)
-			{
-				// delete what's there
-				statement = "delete from " + table + " where ( " + idField + " = ? )";
+	/**
+	 * The transaction code for writing properties.
+	 * 
+	 * @param r
+	 *        The resource for which properties are to be written.
+	 */
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
+			Properties props, boolean deleteFirst)
+	{
+		String statement;
+		Object[] fields;
 
-				fields = new Object[1];
-				fields[0] = id;
+		if (deleteFirst)
+		{
+			// delete what's there
+			statement = "delete from " + table + " where ( " + idField + " = ? )";
 
-				// process the delete statement
-				m_sql.dbWrite(connection, statement, fields);
-			}
-
-			// the SQL statement
-			statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
-					+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
-					+ ((extraIdField != null) ? ",?" : "") + ")";
-
-			fields = new Object[((extraIdField != null) ? 4 : 3)];
+			fields = new Object[1];
 			fields[0] = id;
 
-			// process each property
-			for (Enumeration i = props.propertyNames(); i.hasMoreElements();)
-			{
-				String name = (String) i.nextElement();
-				String value = props.getProperty(name);
-
-				fields[1] = name;
-				fields[2] = value;
-
-				if (extraIdField != null)
-				{
-					fields[3] = extraId;
-				}
-
-				// dont write it if there's only an empty string for value
-				if (value.length() > 0)
-				{
-					m_sql.dbWrite(connection, statement, fields);
-				}
-			}
-
-			// end the transaction
-			if (conn == null)
-			{
-				connection.commit();
-			}
+			// process the delete statement
+			m_sql.dbWrite(statement, fields);
 		}
-		catch (Exception e)
+
+		// the SQL statement
+		statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
+				+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
+				+ ((extraIdField != null) ? ",?" : "") + ")";
+
+		fields = new Object[((extraIdField != null) ? 4 : 3)];
+		fields[0] = id;
+
+		// process each property
+		for (Enumeration i = props.propertyNames(); i.hasMoreElements();)
 		{
-			if (connection != null)
+			String name = (String) i.nextElement();
+			String value = props.getProperty(name);
+
+			fields[1] = name;
+			fields[2] = value;
+
+			if (extraIdField != null)
 			{
-				try
-				{
-					if (conn == null)
-					{
-						connection.rollback();
-					}
-				}
-				catch (Exception ee)
-				{
-					M_log.warn("writeProperties, while rolling back: " + ee);
-				}
+				fields[3] = extraId;
 			}
-			M_log.warn("writeProperties: " + e);
-		}
-		finally
-		{
-			if (connection != null)
+
+			// dont write it if there's only an empty string for value
+			if (value.length() > 0)
 			{
-				if (conn == null)
-				{
-					try
-					{
-						connection.setAutoCommit(wasCommit);
-					}
-					catch (Exception e)
-					{
-						M_log.warn("writeProperties, while setting auto commit: " + e);
-					}
-					m_sql.returnConnection(connection);
-				}
+				m_sql.dbWrite(statement, fields);
 			}
 		}
 	}
@@ -1325,12 +1265,10 @@ public class BaseDbFlatStorage
 	/**
 	 * Remove all properties for this resource from the db.
 	 * 
-	 * @param conn
-	 *        Optional db connection to use.
 	 * @param r
 	 *        The resource for which properties are to be deleted.
 	 */
-	protected void deleteProperties(Connection conn, Entity r, Object key)
+	protected void deleteProperties(Entity r, Object key)
 	{
 		String idField = m_resourceTableIdField;
 		if (key != null)
@@ -1348,7 +1286,7 @@ public class BaseDbFlatStorage
 		fields[0] = key == null ? caseId(r.getId()) : key;
 
 		// process the delete statement
-		m_sql.dbWrite(conn, statement, fields);
+		m_sql.dbWrite(statement, fields);
 	}
 
 	/**

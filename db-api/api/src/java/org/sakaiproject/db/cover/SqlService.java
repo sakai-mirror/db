@@ -67,6 +67,14 @@ public class SqlService
 		service.returnConnection(param0);
 	}
 
+	public static boolean transact(Runnable callback, String tag)
+	{
+		org.sakaiproject.db.api.SqlService service = getInstance();
+		if (service == null) return false;
+
+		return service.transact(callback, tag);
+	}
+
 	public static java.util.List dbRead(java.lang.String param0)
 	{
 		org.sakaiproject.db.api.SqlService service = getInstance();

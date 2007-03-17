@@ -49,8 +49,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
+import org.sakaiproject.db.api.SqlServiceDeadlockException;
+import org.sakaiproject.db.api.SqlServiceUniqueViolationException;
 import org.sakaiproject.event.api.UsageSessionService;
 import org.sakaiproject.exception.ServerOverloadException;
+import org.sakaiproject.thread_local.api.ThreadLocalManager;
 import org.sakaiproject.time.api.Time;
 
 /**
@@ -63,6 +66,9 @@ public abstract class BasicSqlService implements SqlService
 	private static final Log LOG = LogFactory.getLog(BasicSqlService.class);
 
 	private static final Log SWC_LOG = LogFactory.getLog(StreamWithConnection.class);
+
+	/** Key name in thread local to find the current transaction connection. */
+	protected static final String TRANSACTION_CONNECTION = "sqlService:transaction_connection";
 
 	/** The "shared", "common" database connection pool */
 	protected DataSource defaultDataSource;
@@ -81,6 +87,11 @@ public abstract class BasicSqlService implements SqlService
 	 * @return the UsageSessionService collaborator.
 	 */
 	protected abstract UsageSessionService usageSessionService();
+	
+	/**
+	 * @return the ThreadLocalManager collaborator.
+	 */
+	protected abstract ThreadLocalManager threadLocalManager();
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Configuration
@@ -121,6 +132,14 @@ public abstract class BasicSqlService implements SqlService
 		m_vendor = (value != null) ? value.toLowerCase().trim() : null;
 	}
 
+	/**
+	 * @inheritDoc
+	 */
+	public String getVendor()
+	{
+		return m_vendor;
+	}
+
 	/** if true, debug each sql command with timing. */
 	protected boolean m_showSql = false;
 
@@ -140,9 +159,19 @@ public abstract class BasicSqlService implements SqlService
 		m_showSql = new Boolean(value).booleanValue();
 	}
 
-	/**********************************************************************************************************************************************************************************************************************************************************
-	 * Dependencies and their setter methods
-	 *********************************************************************************************************************************************************************************************************************************************************/
+	/** Configuration: number of on-deadlock retries for save. */
+	protected int m_deadlockRetries = 5;
+
+	/**
+	 * Configuration: number of on-deadlock retries for save.
+	 * 
+	 * @param value
+	 *        the number of on-deadlock retries for save.
+	 */
+	public void setDeadlockRetries(String value)
+	{
+		m_deadlockRetries = Integer.parseInt(value);
+	}
 
 	/** Configuration: to run the ddl on init or not. */
 	protected boolean m_autoDdl = false;
@@ -163,14 +192,6 @@ public abstract class BasicSqlService implements SqlService
 		m_autoDdl = new Boolean(value).booleanValue();
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	public String getVendor()
-	{
-		return m_vendor;
-	}
-
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
 	 *********************************************************************************************************************************************************************************************************************************************************/
@@ -186,7 +207,7 @@ public abstract class BasicSqlService implements SqlService
 			ddl(getClass().getClassLoader(), "sakai_locks");
 		}
 
-		LOG.info("init(): vendor: " + m_vendor + " autoDDL: " + m_autoDdl);
+		LOG.info("init(): vendor: " + m_vendor + " autoDDL: " + m_autoDdl + " deadlockRetries: " + m_deadlockRetries);
 	}
 
 	/**
@@ -239,6 +260,137 @@ public abstract class BasicSqlService implements SqlService
 				throw new Error(e);
 			}
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public boolean transact(Runnable callback, String tag)
+	{
+		// if we are already in a transaction, stay in it (don't start a new one), and just run the callback (no retries, let the outside transaction code handle that)
+		if (threadLocalManager().get(TRANSACTION_CONNECTION) != null)
+		{
+			callback.run();
+			return true;
+		}
+
+		// in case of deadlock we might retry
+		for (int i = 0; i <= m_deadlockRetries; i++)
+		{
+			if (i > 0)
+			{
+				// make a little fuss
+				LOG.warn("transact: deadlock: retrying (" + i + " / " + m_deadlockRetries + "): " + tag);
+				
+				// do a little wait, longer for each retry
+				// TODO: randomize?
+				try
+				{
+					Thread.sleep(i * 100L);
+				}
+				catch (Exception ignore)
+				{
+				}
+			}
+
+			Connection connection = null;
+			boolean wasCommit = true;
+			try
+			{
+				connection = borrowConnection();
+				wasCommit = connection.getAutoCommit();
+				connection.setAutoCommit(false);
+				
+				// store the connection in the thread
+				threadLocalManager().set(TRANSACTION_CONNECTION, connection);
+
+				callback.run();
+				
+				connection.commit();
+				
+				return true;
+			}
+			catch (SqlServiceDeadlockException e)
+			{
+				// rollback
+				if (connection != null)
+				{
+					try
+					{
+						connection.rollback();
+						LOG.warn("transact: deadlock: rolling back: " + tag);
+					}
+					catch (Exception ee)
+					{
+						LOG.warn("transact: (deadlock: rollback): " + tag + " : " + ee);
+					}
+				}
+
+				// if this was the last attempt, throw to abort
+				if (i == m_deadlockRetries)
+				{
+					LOG.warn("transact: deadlock: retry failure: " + tag);
+					throw e;
+				}
+			}
+			catch (RuntimeException e)
+			{
+				// rollback
+				if (connection != null)
+				{
+					try
+					{
+						connection.rollback();
+						LOG.warn("transact: rolling back: " + tag);
+					}
+					catch (Exception ee)
+					{
+						LOG.warn("transact: (rollback): " + tag + " : " + ee);
+					}
+				}
+				LOG.warn("transact: failure: " + e);
+				throw e;
+			}
+			catch (SQLException e)
+			{
+				// rollback
+				if (connection != null)
+				{
+					try
+					{
+						connection.rollback();
+						LOG.warn("transact: rolling back: " + tag);
+					}
+					catch (Exception ee)
+					{
+						LOG.warn("transact: (rollback): " + tag + " : " + ee);
+					}
+				}
+				LOG.warn("transact: failure: " + e);
+				throw new RuntimeException("SqlService.transact failure", e);
+			}
+
+			finally
+			{
+				if (connection != null)
+				{
+					// clear the connection from the thread
+					threadLocalManager().set(TRANSACTION_CONNECTION, null);
+
+					try
+					{
+						connection.setAutoCommit(wasCommit);
+					}
+					catch (Exception e)
+					{
+						LOG.warn("transact: (setAutoCommit): " + tag + " : " + e);
+					}
+					returnConnection(connection);
+				}
+			}
+		}
+		
+		return false;
 	}
 
 	/** Used to work with dates in GMT in the db. */
@@ -307,6 +459,12 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public List dbRead(Connection callerConn, String sql, Object[] fields, SqlReader reader)
 	{
+		// check for a transaction conncetion
+		if (callerConn == null)
+		{
+			callerConn = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
+		}
+		
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbRead(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", SqlReader " + reader
@@ -468,6 +626,12 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void dbReadBinary(Connection callerConn, String sql, Object[] fields, byte[] value)
 	{
+		// check for a transaction conncetion
+		if (callerConn == null)
+		{
+			callerConn = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
+		}
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbReadBinary(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", byte[] " + value
@@ -572,6 +736,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public InputStream dbReadBinary(String sql, Object[] fields, boolean big) throws ServerOverloadException
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbReadBinary(String " + sql + ", Object[] " + fields + ", boolean " + big + ")");
@@ -731,6 +897,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public boolean dbWriteBinary(String sql, Object[] fields, byte[] var, int offset, int len)
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbWriteBinary(String " + sql + ", Object[] " + fields + ", byte[] " + var + ", int " + offset + ", int "
@@ -930,6 +1098,12 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	protected boolean dbWrite(String sql, Object[] fields, String lastField, Connection callerConnection, boolean failQuiet)
 	{
+		// check for a transaction conncetion
+		if (callerConnection == null)
+		{
+			callerConnection = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
+		}
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", String " + lastField + ", Connection "
@@ -1032,7 +1206,7 @@ public abstract class BasicSqlService implements SqlService
 		}
 		catch (SQLException e)
 		{
-			// is this due to a key constraint problem... check each vendor's error codes
+			// is this due to a key constraint problem?... check each vendor's error codes
 			boolean recordAlreadyExists = false;
 			if ("hsqldb".equals(m_vendor))
 			{
@@ -1053,11 +1227,29 @@ public abstract class BasicSqlService implements SqlService
 						+ e);
 			}
 
+			// if asked to fail quietly, just return false if we find this error.
 			if (recordAlreadyExists || failQuiet) return false;
 
-			// something ELSE went wrong, so lest make a fuss
-			LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
-			throw new RuntimeException("SqlService.dbWrite failure", e);
+			// perhaps due to a mysql deadlock?
+			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbWrite(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceDeadlockException(e);
+			}
+
+			else if (recordAlreadyExists)
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbWrite(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceUniqueViolationException(e);
+			}
+			else
+			{
+				// something ELSE went wrong, so lest make a fuss
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+				throw new RuntimeException("SqlService.dbWrite failure", e);
+			}
 		}
 		catch (Exception e)
 		{
@@ -1134,6 +1326,12 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Long dbInsert(Connection callerConnection, String sql, Object[] fields, String autoColumn, InputStream last, int lastLength)
 	{
+		// check for a transaction conncetion
+		if (callerConnection == null)
+		{
+			callerConnection = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
+		}
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbInsert(String " + sql + ", Object[] " + fields + ", Connection " + callerConnection + ")");
@@ -1255,11 +1453,27 @@ public abstract class BasicSqlService implements SqlService
 
 			if (recordAlreadyExists) return null;
 
-			// something ELSE went wrong, so lest make a fuss
-			LOG
-					.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
-							+ " ", e);
-			throw new RuntimeException("SqlService.dbInsert failure", e);
+			// perhaps due to a mysql deadlock?
+			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbInsert(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceDeadlockException(e);
+			}
+
+			else if (recordAlreadyExists)
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbInsert(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceUniqueViolationException(e);
+			}
+
+			else
+			{
+				// something ELSE went wrong, so lest make a fuss
+				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+				throw new RuntimeException("SqlService.dbInsert failure", e);
+			}
 		}
 		catch (Exception e)
 		{
@@ -1310,6 +1524,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void dbReadBlobAndUpdate(String sql, byte[] content)
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbReadBlobAndUpdate(String " + sql + ", byte[] " + content + ")");
@@ -1421,6 +1637,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Connection dbReadLock(String sql, StringBuffer field)
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbReadLock(String " + sql + ", StringBuffer " + field + ")");
@@ -1522,6 +1740,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void dbUpdateCommit(String sql, Object[] fields, String var, Connection conn)
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbUpdateCommit(String " + sql + ", Object[] " + fields + ", String " + var + ", Connection " + conn + ")");
@@ -1597,6 +1817,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void dbCancel(Connection conn)
 	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
 		if (LOG.isDebugEnabled())
 		{
 			LOG.debug("dbCancel(Connection " + conn + ")");

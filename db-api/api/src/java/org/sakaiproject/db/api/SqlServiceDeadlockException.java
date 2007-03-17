@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2006, 2007 The Sakai Foundation.
+ * Copyright (c) 2007 The Sakai Foundation.
  * 
  * Licensed under the Educational Community License, Version 1.0 (the "License"); 
  * you may not use this file except in compliance with the License. 
@@ -19,25 +19,15 @@
  *
  **********************************************************************************/
 
-package org.sakaiproject.db.impl;
-
-import org.sakaiproject.event.api.UsageSessionService;
-import org.sakaiproject.thread_local.api.ThreadLocalManager;
+package org.sakaiproject.db.api;
 
 /**
- * <p>
- * SqlServiceTest extends the basic sql service providing the dependency injectors for testing.
- * </p>
+ * SqlServiceAlreadyExistsException indicates that the write operation failed due to a db deadlock.
  */
-public class SqlServiceTest extends BasicSqlService
+public class SqlServiceDeadlockException extends RuntimeException
 {
-	protected UsageSessionService usageSessionService()
+	public SqlServiceDeadlockException(Exception cause)
 	{
-		return null;
-	}
-
-	protected ThreadLocalManager threadLocalManager()
-	{
-		return null;
+		super(cause);
 	}
 }

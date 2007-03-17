@@ -39,6 +39,10 @@ import org.sakaiproject.exception.ServerOverloadException;
  */
 public interface SqlService
 {
+	/**********************************************************************************************************************************************************************************************************************************************************
+	 * Transaction support
+	 *********************************************************************************************************************************************************************************************************************************************************/
+
 	/**
 	 * Access an available or newly created Connection from the default pool. Will wait a while until one is available.
 	 * 
@@ -55,6 +59,20 @@ public interface SqlService
 	 *        The connetion to release. If null or not one of ours, ignored.
 	 */
 	void returnConnection(Connection conn);
+	
+	/**
+	 * Run some code in a transaction. The code is callback. Any calls to this service will be done within the transaction if they don't supply their
+	 * own connection.<br />
+	 * If the transaction fails due to a deadlock, it will be retried a number of times.
+	 * 
+	 * @param callback
+	 *        The code to run.
+	 * @param tag
+	 *        A string to use in logging failure to identify the transaction.
+	 * @return true if all went well. The SqlServiceDeadlockException will be thrown if we end up failing due to a deadlock, and the
+	 *         SqlServiceUniqueViolation.
+	 */
+	boolean transact(Runnable callback, String tag);
 
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Sql operations
