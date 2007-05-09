@@ -1992,6 +1992,12 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setInt(pos, n);
 					pos++;
 				}
+				else if (fields[i] instanceof Float)
+				{
+					float f = ((Float) fields[i]).floatValue();
+					pstmt.setFloat(pos, f);
+					pos++;
+				}
 				else if (fields[i] instanceof Boolean)
 				{
 					pstmt.setBoolean(pos, ((Boolean) fields[i]).booleanValue());
