@@ -4,17 +4,17 @@
  ***********************************************************************************
  *
  * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
@@ -40,6 +40,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.Vector;
 
@@ -49,6 +50,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
+import org.sakaiproject.db.api.SqlServiceSql;
 import org.sakaiproject.db.api.SqlServiceDeadlockException;
 import org.sakaiproject.db.api.SqlServiceUniqueViolationException;
 import org.sakaiproject.event.api.UsageSessionService;
@@ -99,7 +101,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Configuration: should we do a commit after each single SQL read?
-	 * 
+	 *
 	 * @param value
 	 *        the setting (true of false) string.
 	 */
@@ -118,7 +120,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Configuration: Database vendor used; possible values are oracle, mysql, hsqldb.
-	 * 
+	 *
 	 * @param value
 	 *        the Database vendor used.
 	 */
@@ -145,7 +147,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Configuration: to show each sql command in the logs or not.
-	 * 
+	 *
 	 * @param value
 	 *        the showSql setting.
 	 */
@@ -178,7 +180,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Configuration: to run the ddl on init or not.
-	 * 
+	 *
 	 * @param value
 	 *        the auto ddl value.
 	 */
@@ -192,6 +194,25 @@ public abstract class BasicSqlService implements SqlService
 		m_autoDdl = new Boolean(value).booleanValue();
 	}
 
+
+   protected Map<String, SqlServiceSql> databaseBeans;      // contains a map of the database dependent beans injected by spring
+   protected SqlServiceSql              sqlServiceSql;      // contains database dependent code
+
+   public void setDatabaseBeans(Map databaseBeans) {
+     this.databaseBeans = databaseBeans;
+   }
+
+   public SqlServiceSql getSqlServiceSql() {
+      return sqlServiceSql;
+   }
+
+   /**
+    * sets which bean containing database dependent code should be used depending on the database vendor.
+    */
+   public void setSqlServiceSql(String vendor) {
+      this.sqlServiceSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+   }
+
 	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
 	 *********************************************************************************************************************************************************************************************************************************************************/
@@ -201,6 +222,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void init()
 	{
+      setSqlServiceSql(getVendor());
+
 		// if we are auto-creating our schema, check and create
 		if (m_autoDdl)
 		{
@@ -406,7 +429,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field from the db, from multiple records, returned as string[], one per record.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @return The List of Strings of single fields of the record found, or empty if none found.
@@ -424,7 +447,7 @@ public abstract class BasicSqlService implements SqlService
 	/**
 	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
 	 * String, will be placed in the list.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -446,7 +469,7 @@ public abstract class BasicSqlService implements SqlService
 	/**
 	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
 	 * String, will be placed in the list.
-	 * 
+	 *
 	 * @param callerConn
 	 *        The db connection object to use (if not null).
 	 * @param sql
@@ -594,7 +617,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field from the db, from multiple record - concatenating the binary values into value.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -614,7 +637,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field from the db, from multiple record - concatenating the binary values into value.
-	 * 
+	 *
 	 * @param callerConn
 	 *        The optional db connection object to use.
 	 * @param sql
@@ -724,7 +747,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field / record from the db, returning a stream on the result record / field. The stream holds the conection open - so it must be closed or finalized quickly!
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -845,7 +868,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @return true if successful, false if not.
@@ -863,7 +886,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response. a long field is set to "?" - fill it in with var
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param var
@@ -882,7 +905,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response. a long binary field is set to "?" - fill it in with var
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1001,7 +1024,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response, using a set of fields from an array plus one more as params.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1020,7 +1043,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response, using a set of fields from an array and a given connection.
-	 * 
+	 *
 	 * @param connection
 	 *        The connection to use.
 	 * @param sql
@@ -1041,7 +1064,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response, using a set of fields from an array and a given connection logging no errors on failure.
-	 * 
+	 *
 	 * @param connection
 	 *        The connection to use.
 	 * @param sql
@@ -1062,7 +1085,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response, using a set of fields from an array plus one more as params.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1083,7 +1106,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "write" sql - no response, using a set of fields from an array plus one more as params and connection.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1176,21 +1199,8 @@ public abstract class BasicSqlService implements SqlService
 			// last, put in the string value
 			if (lastField != null)
 			{
-				if ("mysql".equals(m_vendor))
-				{
-					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-					// MySQL setCharacterStream() is broken and truncates UTF-8
-					// international characters sometimes. So use setBytes()
-					// instead (just for MySQL).
-					pstmt.setBytes(pos, lastField.getBytes("UTF-8"));
-					pos++;
-
-				}
-				else
-				{
-					pstmt.setCharacterStream(pos, new StringReader(lastField), lastField.length());
-					pos++;
-				}
+            sqlServiceSql.setBytes(pstmt, lastField, pos);
+            pos++;
 			}
 
 			int result = pstmt.executeUpdate();
@@ -1207,49 +1217,12 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem?... check each vendor's error codes
-			boolean recordAlreadyExists = false;
-			if ("hsqldb".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == -104;
-			}
-			else if ("mysql".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1062;
-			}
-			else if ("oracle".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1;
-			}
+            boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
 
-			if (m_showSql)
-			{
-				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
-						+ e);
-			}
-
-			// if asked to fail quietly, just return false if we find this error.
-			if (recordAlreadyExists || failQuiet) return false;
-
-			// perhaps due to a mysql deadlock?
-			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
-			{
-				// just a little fuss
-				LOG.warn("Sql.dbWrite(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
-				throw new SqlServiceDeadlockException(e);
-			}
-
-			else if (recordAlreadyExists)
-			{
-				// just a little fuss
-				LOG.warn("Sql.dbWrite(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
-				throw new SqlServiceUniqueViolationException(e);
-			}
-			else
-			{
-				// something ELSE went wrong, so lest make a fuss
-				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
-				throw new RuntimeException("SqlService.dbWrite failure", e);
-			}
+            if (m_showSql)
+            {
+                LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+            }
 		}
 		catch (Exception e)
 		{
@@ -1293,7 +1266,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "insert" sql, returning a possible auto-update field Long value
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1311,7 +1284,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Execute the "insert" sql, returning a possible auto-update field Long value
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1431,19 +1404,7 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem... check each vendor's error codes
-			boolean recordAlreadyExists = false;
-			if ("hsqldb".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == -104;
-			}
-			else if ("mysql".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1062;
-			}
-			else if ("oracle".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1;
-			}
+         boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
 
 			if (m_showSql)
 			{
@@ -1516,7 +1477,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field BLOB from the db from one record, and update it's bytes with content.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement to select the BLOB.
 	 * @param content
@@ -1531,9 +1492,9 @@ public abstract class BasicSqlService implements SqlService
 			LOG.debug("dbReadBlobAndUpdate(String " + sql + ", byte[] " + content + ")");
 		}
 
-		if (!"oracle".equals(getVendor()))
+      if (!sqlServiceSql.canReadAndUpdateBlob())
 		{
-			throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() only works with an Oracle DB");
+         throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() is not supported by the " + getVendor() + " database.");
 		}
 
 		// for DEBUG
@@ -1628,7 +1589,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Read a single field from the db, from a single record, return the value found, and lock for update.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param field
@@ -1728,7 +1689,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Commit the update that was locked on this connection.
-	 * 
+	 *
 	 * @param sql
 	 *        The sql statement.
 	 * @param fields
@@ -1761,20 +1722,8 @@ public abstract class BasicSqlService implements SqlService
 			// prepare the update statement and fill with the last variable (if any)
 			if (var != null)
 			{
-				if ("mysql".equals(m_vendor))
-				{
-					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-					// MySQL setCharacterStream() is broken and truncates UTF-8
-					// international characters sometimes. So use setBytes()
-					// instead (just for MySQL).
-					pstmt.setBytes(pos, var.getBytes("UTF-8"));
-					pos++;
-				}
-				else
-				{
-					pstmt.setCharacterStream(pos, new StringReader(var), var.length());
-					pos++;
-				}
+            sqlServiceSql.setBytes(pstmt, var, pos);
+            pos++;
 			}
 
 			// run the SQL statement
@@ -1811,7 +1760,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Cancel the update that was locked on this connection.
-	 * 
+	 *
 	 * @param conn
 	 *        The database connection on which the lock was gained.
 	 */
@@ -1937,7 +1886,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Prepare a prepared statement with fields.
-	 * 
+	 *
 	 * @param pstmt
 	 *        The prepared statement to fill in.
 	 * @param fields
@@ -1970,14 +1919,7 @@ public abstract class BasicSqlService implements SqlService
 				else if (fields[i] instanceof Time)
 				{
 					Time t = (Time) fields[i];
-					if ("hsqldb".equals(getVendor()))
-					{
-						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), null);
-					}
-					else
-					{
-						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), m_cal);
-					}
+               sqlServiceSql.setTimestamp(pstmt, new Timestamp(t.getTime()), m_cal, pos);
 					pos++;
 				}
 				else if (fields[i] instanceof Long)
@@ -2007,20 +1949,8 @@ public abstract class BasicSqlService implements SqlService
 				else
 				{
 					String value = fields[i].toString();
-					if ("mysql".equals(m_vendor))
-					{
-						// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-						// MySQL setCharacterStream() is broken and truncates UTF-8
-						// international characters sometimes. So use setBytes()
-						// instead (just for MySQL).
-						pstmt.setBytes(pos, value.getBytes("UTF-8"));
-						pos++;
-					}
-					else
-					{
-						pstmt.setCharacterStream(pos, new StringReader(value), value.length());
-						pos++;
-					}
+               sqlServiceSql.setBytes(pstmt, value, pos);
+               pos++;
 				}
 			}
 		}
@@ -2030,7 +1960,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/**
 	 * Append a message about this SQL statement to the DEBUG string in progress, if any
-	 * 
+	 *
 	 * @param str
 	 *        The SQL statement.
 	 * @param fields
@@ -2271,19 +2201,9 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Long getNextSequence(String tableName, Connection conn)
 	{
-		if ("hsqldb".equals(m_vendor))
-		{
-			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL"; // TODO: dual for hsql?
-			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
-		}
+      String sql = sqlServiceSql.getNextSequenceSql(tableName);
 
-		if ("oracle".equals(m_vendor))
-		{
-			String sql = "SELECT " + tableName + ".NEXTVAL FROM DUAL";
-			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
-		}
-
-		return null;
+      return (sql == null ? null : new Long((String) (dbRead(conn, sql, null, null).get(0))));
 	}
 
 	/**
@@ -2291,11 +2211,6 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public String getBooleanConstant(boolean value)
 	{
-		if ("mysql".equals(m_vendor))
-		{
-			return value ? "true" : "false";
-		}
-
-		return value ? "1" : "0";
-	}
+      return sqlServiceSql.getBooleanConstant(value);
+   }
 }
