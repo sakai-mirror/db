@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>master</artifactId>
+    <artifactId>db-base</artifactId>
     <groupId>org.sakaiproject</groupId>
     <version>M2</version>
-    <relativePath>../../master/pom.xml</relativePath>
+    <relativePath>../pom.xml</relativePath>
   </parent>
   <description>Shared Deployment Descriptor for DB</description>
   <name>sakai-db-shared-deploy</name>
@@ -57,9 +57,9 @@
       <version>2.7.6rc1</version>
     </dependency>
     <dependency>
-      	<groupId>${sakai.ehcache.groupId}</groupId>
-		<artifactId>${sakai.ehcache.artifactId}</artifactId>
-		<version>${sakai.ehcache.version}</version>
+      <groupId>${sakai.ehcache.groupId}</groupId>
+      <artifactId>${sakai.ehcache.artifactId}</artifactId>
+      <version>${sakai.ehcache.version}</version>
     </dependency>
     <dependency>
       <groupId>${sakai.hibernate.groupId}</groupId>
