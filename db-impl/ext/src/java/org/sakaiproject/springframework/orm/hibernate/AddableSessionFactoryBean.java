@@ -1,6 +1,6 @@
 /**********************************************************************************
- * $URL: https://source.sakaiproject.org/contrib/rsmart/dbrefactor/db/db-impl/ext/src/java/org/sakaiproject/springframework/orm/hibernate/AddableSessionFactoryBean.java $
- * $Id: AddableSessionFactoryBean.java 3552 2007-02-19 19:51:45Z jbush@rsmart.com $
+ * $URL: https://source.sakaiproject.org/svn/trunk/sakai/admin-tools/su/src/java/org/sakaiproject/tool/su/SuTool.java $
+ * $Id: SuTool.java 5970 2006-02-15 03:07:19Z ggolden@umich.edu $
  ***********************************************************************************
  *
  * Copyright (c) 2005, 2006 The Sakai Foundation.
