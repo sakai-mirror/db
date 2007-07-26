@@ -3,22 +3,52 @@
 
 <beans>
 
-	<bean id="org.sakaiproject.db.api.SqlService"
+    <!-- database beans -->
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlDefault"   class="org.sakaiproject.db.impl.BasicSqlServiceSqlDefault" singleton="true"/>
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlDb2"       class="org.sakaiproject.db.impl.BasicSqlServiceSqlDb2"     singleton="true"/>
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlHSql"      class="org.sakaiproject.db.impl.BasicSqlServiceSqlHSql"    singleton="true"/>
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlMsSql"     class="org.sakaiproject.db.impl.BasicSqlServiceSqlMsSql"   singleton="true"/>
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlMySql"     class="org.sakaiproject.db.impl.BasicSqlServiceSqlMySql"   singleton="true"/>
+    <bean id="org.sakaiproject.db.impl.BasicSqlServiceSqlOracle"    class="org.sakaiproject.db.impl.BasicSqlServiceSqlOracle"  singleton="true"/>
+        
+    <bean id="org.sakaiproject.db.api.SqlService"
 			class="org.sakaiproject.db.impl.BasicSqlService"
 			init-method="init" destroy-method="destroy" singleton="true">
 
 		<lookup-method name="usageSessionService" bean="org.sakaiproject.event.api.UsageSessionService" />
 		<lookup-method name="threadLocalManager" bean="org.sakaiproject.thread_local.api.ThreadLocalManager" />
 
-        <property name="defaultDataSource">   <ref bean="javax.sql.DataSource" />         </property>
-        <property name="longDataSource">      <ref bean="javax.sql.LongDataSource" />     </property>
-        <property name="autoDdl">             <value>${auto.ddl}</value>                  </property>
-        <property name="commitAfterRead">     <value>false</value>                        </property>
+		<property name="defaultDataSource">
+			<ref bean="javax.sql.DataSource" />
+		</property>
+		
+		<property name="longDataSource">
+			<ref bean="javax.sql.LongDataSource" />
+		</property>
+		
+		<property name="autoDdl">
+			<value>${auto.ddl}</value>
+		</property>
+
+		<property name="commitAfterRead">
+			<value>false</value>
+		</property>
 
 		<!-- HSQLDB configuration -->
 		<property name="vendor">
 			<value>hsqldb</value>
 		</property>
+        
+        <property name="databaseBeans">
+           <map>
+              <entry key="default"><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlDefault"/></entry>
+              <entry key="db2"    ><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlDb2"    /></entry>
+              <entry key="hsqldb" ><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlHSql"   /></entry>
+              <entry key="mssql"  ><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlMsSql"  /></entry>
+              <entry key="mysql"  ><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlMySql"  /></entry>
+              <entry key="oracle" ><ref bean="org.sakaiproject.db.impl.BasicSqlServiceSqlOracle" /></entry>
+           </map>
+        </property>
 	</bean>
 
 	<!-- Base DataSource for all pooled database connections -->
@@ -188,12 +218,12 @@
 				</prop>
 			</props>
 		</property>
-		
+
 		<!--  update the database schema when starting -->
 		<property name="schemaUpdate">
 			<value>${auto.ddl}</value>
 		</property>
-	
+
 	</bean>
 
 	<!--  The "Global" Hibernate Session Factory -->
