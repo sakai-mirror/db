@@ -18,7 +18,7 @@
  * limitations under the License.
  *
  **********************************************************************************/
-package org.sakaiproject.util;
+ package org.sakaiproject.util;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,7 +28,7 @@ import org.apache.commons.logging.LogFactory;
 /**
  * methods for accessing flat storage data in an oracle database.
  */
-public class FlatStorageSqlOracle extends FlatStorageSqlDefault
+public class FlatStorageSqlOracle extends FlatStorageSqlDefault 
 {
    public String   getIdField(String table) {
       return "," + table + "_SEQ.NEXTVAL";
@@ -45,7 +45,7 @@ public class FlatStorageSqlOracle extends FlatStorageSqlDefault
               ((join == null) ? "" : ("," + join)) + (((where != null) && (where.length() > 0)) ? (" where " + where) : "") + " order by " + order + "," + table + "." + idField + " ) where rank between ? and ?";
    }
 
-   public Object[] getSelectFieldsSql(int first, int last) {
+   public Object[] getSelectFieldsFields(int first, int last) {
       Object[] fields = new Object[2];
 
       fields[0] = new Long(first);
