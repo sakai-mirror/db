@@ -3,18 +3,18 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
@@ -26,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -49,8 +50,8 @@ import org.w3c.dom.Element;
  * Edit into something more type specific to the service.
  * </p>
  * <p>
- * Note: the methods here are all "id" based, with the following assumptions: <br /> - just the Resource Id field is enough to distinguish one Resource from another <br /> - a resource's reference is based on no more than the resource id <br /> - a
- * resource's id cannot change.
+ * Note: the methods here are all "id" based, with the following assumptions: <br /> - just the Resource Id field is enough to distinguish one
+ * Resource from another <br /> - a resource's reference is based on no more than the resource id <br /> - a resource's id cannot change.
  * </p>
  * <p>
  * In order to handle Unicode characters properly, the SQL statements executed by this class <br />
@@ -95,6 +96,37 @@ public class BaseDbSingleStorage
 	/** Injected (by constructor) SqlService. */
 	protected SqlService m_sql = null;
 
+	/** contains a map of the database dependent handlers. */
+	protected static Map<String, SingleStorageSql> databaseBeans;
+
+	/** The db handler we are using. */
+	protected SingleStorageSql singleStorageSql;
+
+	public void setDatabaseBeans(Map databaseBeans)
+	{
+		this.databaseBeans = databaseBeans;
+	}
+
+	/**
+	 * sets which bean containing database dependent code should be used depending on the database vendor.
+	 */
+	public void setSingleStorageSql(String vendor)
+	{
+		this.singleStorageSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+	}
+
+	// since spring is not used and this class is instatiated directly, we need to "inject" these values ourselves
+	static
+	{
+		databaseBeans = new Hashtable<String, SingleStorageSql>();
+		databaseBeans.put("db2", new SingleStorageSqlDb2());
+		databaseBeans.put("default", new SingleStorageSqlDefault());
+		databaseBeans.put("hsql", new SingleStorageSqlHSql());
+		databaseBeans.put("mssql", new SingleStorageSqlMsSql());
+		databaseBeans.put("mysql", new SingleStorageSqlMySql());
+		databaseBeans.put("oracle", new SingleStorageSqlOracle());
+	}
+
 	/**
 	 * Construct.
 	 * 
@@ -113,8 +145,8 @@ public class BaseDbSingleStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbSingleStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableOtherFields,
-			boolean locksInDb, String resourceEntryName, StorageUser user, SqlService sqlService)
+	public BaseDbSingleStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableOtherFields, boolean locksInDb,
+			String resourceEntryName, StorageUser user, SqlService sqlService)
 	{
 		m_resourceTableName = resourceTableName;
 		m_resourceTableIdField = resourceTableIdField;
@@ -123,6 +155,8 @@ public class BaseDbSingleStorage
 		m_resourceEntryTagName = resourceEntryName;
 		m_user = user;
 		m_sql = sqlService;
+
+		setSingleStorageSql(m_sql.getVendor());
 	}
 
 	/**
@@ -192,8 +226,7 @@ public class BaseDbSingleStorage
 	public boolean checkResource(String id)
 	{
 		// just see if the record exists
-		String sql = "select " + m_resourceTableIdField + " from " + m_resourceTableName + " where ( " + m_resourceTableIdField
-				+ " = ? )";
+		String sql = singleStorageSql.getResourceIdSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
@@ -214,7 +247,7 @@ public class BaseDbSingleStorage
 		Entity entry = null;
 
 		// get the user from the db
-		String sql = "select XML from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
+		String sql = singleStorageSql.getXmlSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
@@ -240,7 +273,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName;
+		String sql = singleStorageSql.getXmlSql(m_resourceTableName);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql);
@@ -260,32 +293,8 @@ public class BaseDbSingleStorage
 
 	public List getAllResources(int first, int last)
 	{
-		String sql;
-		Object[] fields = null;
-		if ("oracle".equals(m_sql.getVendor()))
-		{
-			// use Oracle RANK function
-			sql = "select XML from" + " (select XML" + " ,RANK() OVER" + " (order by " + m_resourceTableIdField + ") as rank"
-					+ " from " + m_resourceTableName + " order by " + m_resourceTableIdField + " asc)"
-					+ " where rank between ? and ?";
-			fields = new Object[2];
-			fields[0] = new Long(first);
-			fields[1] = new Long(last);
-		}
-		else if ("mysql".equals(m_sql.getVendor()))
-		{
-			// use MySQL SQL LIMIT clause
-			sql = "select XML from " + m_resourceTableName + " order by " + m_resourceTableIdField + " asc " + " limit "
-					+ (last - first + 1) + " offset " + (first - 1);
-		}
-		else
-		// if ("hsqldb".equals(m_sql.getVendor()))
-		{
-			// use SQL2000 LIMIT clause
-			sql = "select " + "limit " + (first - 1) + " " + (last - first + 1) + " " + "XML from " + m_resourceTableName
-					+ " order by " + m_resourceTableIdField + " asc";
-		}
-
+		String sql = singleStorageSql.getXmlSql(m_resourceTableIdField, m_resourceTableName, first, last);
+		Object[] fields = singleStorageSql.getXmlFields(first, last);
 		List xml = m_sql.dbRead(sql, fields, null);
 		List rv = new Vector();
 
@@ -307,7 +316,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all count
-		String sql = "select count(1) from " + m_resourceTableName;
+		String sql = singleStorageSql.getNumRowsSql(m_resourceTableName);
 
 		List results = m_sql.dbRead(sql, null, new SqlReader()
 		{
@@ -335,7 +344,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all where count
-		String sql = "select count(1) from " + m_resourceTableName + " " + sqlWhere;
+		String sql = singleStorageSql.getNumRowsSql(m_resourceTableName, sqlWhere);
 		List results = m_sql.dbRead(sql, null, new SqlReader()
 		{
 			public Object readSqlResultRecord(ResultSet result)
@@ -369,7 +378,7 @@ public class BaseDbSingleStorage
 	public List getAllResourcesWhere(String field, String value)
 	{
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " where " + field + " = ?";
+		String sql = singleStorageSql.getXmlSql(field, m_resourceTableName);
 		Object[] fields = new Object[1];
 		fields[0] = value;
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
@@ -401,7 +410,7 @@ public class BaseDbSingleStorage
 
 	public List getAllResourcesWhereLike(String field, String value)
 	{
-		String sql = "select XML from " + m_resourceTableName + " where " + field + " like ?";
+		String sql = singleStorageSql.getXmlLikeSql(field, m_resourceTableName);
 		Object[] fields = new Object[1];
 		fields[0] = value;
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
@@ -421,7 +430,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select " + m_resourceTableIdField + ", XML from " + m_resourceTableName;
+		String sql = singleStorageSql.getXmlAndFieldSql(m_resourceTableIdField, m_resourceTableName);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql, null, new SqlReader()
@@ -472,7 +481,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " " + sqlWhere;
+		String sql = singleStorageSql.getXmlWhereSql(m_resourceTableName, sqlWhere);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql);
@@ -508,8 +517,8 @@ public class BaseDbSingleStorage
 		Document doc = Xml.createDocument();
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "insert into " + m_resourceTableName
-				+ insertFields(m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( ?, "
+		String statement = // singleStorageSql.
+		"insert into " + m_resourceTableName + insertFields(m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( ?, "
 				+ valuesParams(m_resourceTableOtherFields) + " ? )";
 
 		Object[] flds = m_user.storageFields(entry);
@@ -545,10 +554,9 @@ public class BaseDbSingleStorage
 		Document doc = Xml.createDocument();
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "insert into "
-				+ m_resourceTableName
-				+ insertDeleteFields(m_resourceTableIdField, m_resourceTableOtherFields, "RESOURCE_UUID", "DELETE_DATE",
-						"DELETE_USERID", "XML") + " values ( ?, " + valuesParams(m_resourceTableOtherFields) + " ? ,? ,? ,?)";
+		String statement = "insert into " + m_resourceTableName
+				+ insertDeleteFields(m_resourceTableIdField, m_resourceTableOtherFields, "RESOURCE_UUID", "DELETE_DATE", "DELETE_USERID", "XML")
+				+ " values ( ?, " + valuesParams(m_resourceTableOtherFields) + " ? ,? ,? ,?)";
 
 		Object[] flds = m_user.storageFields(entry);
 		if (flds == null) flds = new Object[0];
@@ -621,8 +629,7 @@ public class BaseDbSingleStorage
 		fields[fields.length - 2] = xml;
 		fields[fields.length - 1] = uuid;// caseId(edit.getId());
 
-		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ?"
-				+ " where ( RESOURCE_UUID = ? )";
+		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( RESOURCE_UUID = ? )";
 
 		if (m_locksAreInDb)
 		{
@@ -645,7 +652,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -712,8 +719,7 @@ public class BaseDbSingleStorage
 			if (entry == null) return null;
 
 			// write a lock to the lock table - if we can do it, we get the lock
-			String statement = "insert into SAKAI_LOCKS" + " (TABLE_NAME,RECORD_ID,LOCK_TIME,USAGE_SESSION_ID)"
-					+ " values (?, ?, ?, ?)";
+			String statement = singleStorageSql.getInsertLocks();
 
 			// we need session id and user id
 			String sessionId = UsageSessionService.getSessionId();
@@ -783,8 +789,9 @@ public class BaseDbSingleStorage
 		fields[fields.length - 2] = xml;
 		fields[fields.length - 1] = caseId(edit.getId());
 
-		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ?"
-				+ " where ( " + m_resourceTableIdField + " = ? )";
+		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( "
+				+ m_resourceTableIdField + " = ? )";
+		// singleStorageSql.getUpdateXml(m_resourceTableIdField, m_resourceTableOtherFields, m_resourceTableName);
 
 		if (m_locksAreInDb)
 		{
@@ -809,7 +816,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -860,7 +867,7 @@ public class BaseDbSingleStorage
 		else if (m_locksAreInTable)
 		{
 			// remove the lock
-			String statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			String statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -889,7 +896,7 @@ public class BaseDbSingleStorage
 	public void removeResource(Edit edit)
 	{
 		// form the SQL delete statement
-		String statement = "delete from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
+		String statement = singleStorageSql.getDeleteSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(edit.getId());
@@ -917,7 +924,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -929,7 +936,6 @@ public class BaseDbSingleStorage
 				M_log.warn("remove: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 			}
 		}
-
 		else
 		{
 			// process the delete statement
@@ -1039,7 +1045,8 @@ public class BaseDbSingleStorage
 	}
 
 	/**
-	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
+	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code
+	 * ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
 	 * 
 	 * @param recordId
 	 * @return The record ID to use internally in the database
