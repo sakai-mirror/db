@@ -94,7 +94,7 @@
 
 		<!-- The minimum number of active connections that can remain idle in the pool, without extra ones being created, or 0 to create none. -->
 		<property name="minIdle">
-			<value>10</value>
+			<value>0</value>
 		</property>
 
 		<!-- The maximum number of milliseconds that the pool will wait (when there
