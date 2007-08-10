@@ -55,6 +55,8 @@ public interface DoubleStorageSql
 	public String getSelectXml4Sql(String table, String idField1, String idField2);
 
 	public String getSelectXml5Sql(String table, String idField, String orderField);
+   
+	public String getSelectXml5filterSql(String table, String idField, String orderField, String filter);
 
 	public String getSelectXml6Sql(String table, String idField1, String idField2, String id, String ref);
 

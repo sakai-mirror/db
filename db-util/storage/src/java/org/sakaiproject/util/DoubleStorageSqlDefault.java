@@ -113,6 +113,13 @@ public class DoubleStorageSqlDefault implements DoubleStorageSql
 		return "select XML from " + table + " where (" + idField + " = ? )" + ((orderField != null) ? (" order by " + orderField + " asc") : "");
 	}
 
+	public String getSelectXml5filterSql(String table, String idField, String orderField, String filter)
+	{
+		return "select XML from " + table + " where (" + idField + " = ? )" 
+			+ ((filter != null) ? "and " + filter : "")
+			+ ((orderField != null) ? (" order by " + orderField + " asc") : "");
+	}
+
 	public String getSelectXml6Sql(String table, String idField1, String idField2, String id, String ref)
 	{
 		return "select XML from " + table + " where (" + idField2 + " ='" + ref + "' ) and ( " + idField1 + " = '" + id + "' ) for update nowait";

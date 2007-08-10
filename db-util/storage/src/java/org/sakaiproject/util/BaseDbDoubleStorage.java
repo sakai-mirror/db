@@ -756,6 +756,38 @@ public class BaseDbDoubleStorage
 	}
 
 	/**
+	 * Get all Resources.
+	 * 
+	 * @param container
+	 *        The container for this resource.
+	 * @param filter
+	 *        conditional for select statement
+	 * @return The list (Resource) of all Resources.
+	 */
+	public List getAllResources(Entity container, String filter)
+	{
+		List all = new Vector();
+
+		// read all users from the db
+		String sql = doubleStorageSql.getSelectXml5filterSql(m_resourceTableName, m_resourceTableContainerIdField, m_resourceTableOrderField, filter);
+		Object[] fields = new Object[1];
+		fields[0] = container.getReference();
+		List xml = m_sql.dbRead(sql, fields, null);
+
+		// process all result xml into user objects
+		if (!xml.isEmpty())
+		{
+			for (int i = 0; i < xml.size(); i++)
+			{
+				Entity entry = readResource(container, (String) xml.get(i));
+				if (entry != null) all.add(entry);
+			}
+		}
+
+		return all;
+	}
+
+	/**
 	 * Add a new Resource with this id.
 	 * 
 	 * @param container
