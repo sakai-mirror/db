@@ -245,25 +245,35 @@ public class BaseDbDoubleStorage
 	{
 		try
 		{
-			// read the xml
-			Document doc = Xml.readDocumentFromString(xml);
+			if ( m_user instanceof SAXEntityReader ) {
+				SAXEntityReader sm_user = (SAXEntityReader) m_user;
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
+				Xml.processString(xml, deh);
+				return deh.getEntity();
+			} else {
+				// read the xml
+				Document doc = Xml.readDocumentFromString(xml);
+	
+				// verify the root element
+				Element root = doc.getDocumentElement();
+				if (!root.getTagName().equals(m_containerEntryTagName))
+				{
+					M_log.warn("readContainer(): not = " + m_containerEntryTagName + " : " + root.getTagName());
+					return null;
+				}
+	
+				// re-create a resource
+				Entity entry = m_user.newContainer(root);
+				return entry;
+				
+			} 
+			
 
-			// verify the root element
-			Element root = doc.getDocumentElement();
-			if (!root.getTagName().equals(m_containerEntryTagName))
-			{
-				M_log.warn("readContainer(): not = " + m_containerEntryTagName + " : " + root.getTagName());
-				return null;
-			}
-
-			// re-create a resource
-			Entity entry = m_user.newContainer(root);
-
-			return entry;
 		}
 		catch (Exception e)
 		{
-			M_log.debug("readContainer(): ", e);
+			M_log.warn("readContainer(): "+e.getMessage());
+			M_log.info("readContainer(): ", e);
 			return null;
 		}
 	}
@@ -654,6 +664,13 @@ public class BaseDbDoubleStorage
 	{
 		try
 		{
+			if ( m_user instanceof SAXEntityReader ) {
+				SAXEntityReader sm_user = (SAXEntityReader) m_user;
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
+				deh.setContainer(container);
+				Xml.processString(xml, deh);
+				return deh.getEntity();
+			} else {
 			// read the xml
 			Document doc = Xml.readDocumentFromString(xml);
 
@@ -669,10 +686,12 @@ public class BaseDbDoubleStorage
 			Entity entry = m_user.newResource(container, root);
 
 			return entry;
+			}
 		}
 		catch (Exception e)
 		{
-			M_log.debug("readResource(): ", e);
+			M_log.warn("readResource(): "+e.getMessage());
+			M_log.info("readResource(): ", e);
 			return null;
 		}
 	}
