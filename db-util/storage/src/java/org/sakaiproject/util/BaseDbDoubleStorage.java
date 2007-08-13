@@ -664,33 +664,38 @@ public class BaseDbDoubleStorage
 	{
 		try
 		{
-			if ( m_user instanceof SAXEntityReader ) {
+			if (m_user instanceof SAXEntityReader)
+			{
 				SAXEntityReader sm_user = (SAXEntityReader) m_user;
-				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user
+						.getServices());
 				deh.setContainer(container);
 				Xml.processString(xml, deh);
 				return deh.getEntity();
-			} else {
-			// read the xml
-			Document doc = Xml.readDocumentFromString(xml);
-
-			// verify the root element
-			Element root = doc.getDocumentElement();
-			if (!root.getTagName().equals(m_resourceEntryTagName))
-			{
-				M_log.warn("readResource(): not = " + m_resourceEntryTagName + " : " + root.getTagName());
-				return null;
 			}
+			else
+			{
+				// read the xml
+				Document doc = Xml.readDocumentFromString(xml);
 
-			// re-create a resource
-			Entity entry = m_user.newResource(container, root);
+				// verify the root element
+				Element root = doc.getDocumentElement();
+				if (!root.getTagName().equals(m_resourceEntryTagName))
+				{
+					M_log.warn("readResource(): not = " + m_resourceEntryTagName + " : "
+							+ root.getTagName());
+					return null;
+				}
 
-			return entry;
+				// re-create a resource
+				Entity entry = m_user.newResource(container, root);
+
+				return entry;
 			}
 		}
 		catch (Exception e)
 		{
-			M_log.warn("readResource(): "+e.getMessage());
+			M_log.warn("readResource(): " + e.getMessage());
 			M_log.info("readResource(): ", e);
 			return null;
 		}
