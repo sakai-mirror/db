@@ -57,7 +57,11 @@ public class AdditionalHibernateMappingsImpl implements AdditionalHibernateMappi
 	{
 		for (int i = 0; i < this.mappingLocations.length; i++)
 		{
-			config.addInputStream(this.mappingLocations[i].getInputStream());
+			try {
+				config.addInputStream(this.mappingLocations[i].getInputStream());
+			} catch (MappingException me) {
+				throw new MappingException("Failed to load "+ this.mappingLocations[i], me.getCause());
+			}
 		}
 	}
 
