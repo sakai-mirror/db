@@ -197,7 +197,7 @@
 	<bean
 			id="org.sakaiproject.springframework.orm.hibernate.SessionFactoryBase"
 			abstract="true"
-			class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+			class="org.sakaiproject.springframework.orm.hibernate.impl.ClassicLocalSessionFactoryBeanHibernate31">
 
 		<property name="dataSource">
 			<ref local="javax.sql.DataSource" />
