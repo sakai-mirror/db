@@ -36,6 +36,9 @@ import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Edit;
 import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.serialize.EntityParseException;
+import org.sakaiproject.entity.api.serialize.EntityReader;
+import org.sakaiproject.entity.api.serialize.EntityReaderHandler;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.time.cover.TimeService;
@@ -101,6 +104,18 @@ public class BaseDbSingleStorage
 
 	/** The db handler we are using. */
 	protected SingleStorageSql singleStorageSql;
+
+	private long ttotal = 0;
+
+	private int ntime = 0;
+
+	private int rntime = 0;
+
+	private long rttotal = 0;
+
+	private long  rmtotal = 0;
+
+	private long mtotal = 0;
 
 	public void setDatabaseBeans(Map databaseBeans)
 	{
@@ -191,10 +206,22 @@ public class BaseDbSingleStorage
 	 */
 	protected Entity readResource(String xml)
 	{
+		Runtime r = Runtime.getRuntime();
+		long ms = r.freeMemory();
+		long start = System.currentTimeMillis();
+		String type = "";
 		try
 		{
-			if (m_user instanceof SAXEntityReader)
+			
+			if ( m_user instanceof EntityReader ) {
+				type = "direct";
+				EntityReader de_user = (EntityReader) m_user;
+				EntityReaderHandler de_handler = de_user.getHandler();
+				return de_handler.parseResource(xml);
+			} 
+			else if (m_user instanceof SAXEntityReader)
 			{
+				type = "sax";
 				SAXEntityReader sm_user = (SAXEntityReader) m_user;
 				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user
 						.getServices());
@@ -203,6 +230,8 @@ public class BaseDbSingleStorage
 			}
 			else
 			{
+				type = "dom";
+
 				// read the xml
 				Document doc = Xml.readDocumentFromString(xml);
 
@@ -220,11 +249,35 @@ public class BaseDbSingleStorage
 
 				return entry;
 			}
+
 		}
 		catch (Exception e)
 		{
-			M_log.debug("readResource(): ", e);
+			M_log.warn("readResource(): " + e.getMessage());
+			M_log.warn("readResource(): ", e);
 			return null;
+		}
+		finally
+		{
+			long t = System.currentTimeMillis() - start;
+			long me = r.freeMemory();
+			long md = ms - me;
+			if ( md >= 0 ) {
+				rmtotal +=md;
+			} else {
+				if ( rntime != 0 ) {
+					rmtotal += (rmtotal/rntime);
+				}
+			}
+			rttotal += t;
+			rntime++;
+			if (rntime % 100 == 0)
+			{
+				double a = (1.0 * rttotal) / (1.0 * rntime);
+				double m = (1.0 * rmtotal) / (1.0 * rntime);
+				M_log.debug("Average "+type+" Parse now " + (a) + "ms "+m+" bytes");
+			}
+
 		}
 	}
 
@@ -526,9 +579,8 @@ public class BaseDbSingleStorage
 		Entity entry = m_user.newResource(null, id, others);
 
 		// form the XML and SQL for the insert
-		Document doc = Xml.createDocument();
-		entry.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(entry);
+		
 		String statement = // singleStorageSql.
 		"insert into " + m_resourceTableName + insertFields(m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( ?, "
 				+ valuesParams(m_resourceTableOtherFields) + " ? )";
@@ -538,7 +590,7 @@ public class BaseDbSingleStorage
 		Object[] fields = new Object[flds.length + 2];
 		System.arraycopy(flds, 0, fields, 1, flds.length);
 		fields[0] = caseId(entry.getId());
-		fields[fields.length - 1] = xml;
+		fields[fields.length - 1] = blob;
 
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
@@ -563,9 +615,8 @@ public class BaseDbSingleStorage
 		Entity entry = m_user.newResource(null, id, others);
 
 		// form the XML and SQL for the insert
-		Document doc = Xml.createDocument();
-		entry.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(entry);
+		
 		String statement = "insert into " + m_resourceTableName
 				+ insertDeleteFields(m_resourceTableIdField, m_resourceTableOtherFields, "RESOURCE_UUID", "DELETE_DATE", "DELETE_USERID", "XML")
 				+ " values ( ?, " + valuesParams(m_resourceTableOtherFields) + " ? ,? ,? ,?)";
@@ -582,7 +633,7 @@ public class BaseDbSingleStorage
 
 		// userId added here
 		fields[fields.length - 2] = userId;
-		fields[fields.length - 1] = xml;
+		fields[fields.length - 1] = blob;
 
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
@@ -631,14 +682,13 @@ public class BaseDbSingleStorage
 	public void commitDeleteResource(Edit edit, String uuid)
 	{
 		// form the SQL statement and the var w/ the XML
-		Document doc = Xml.createDocument();
-		edit.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(edit);
+		
 		Object[] flds = m_user.storageFields(edit);
 		if (flds == null) flds = new Object[0];
 		Object[] fields = new Object[flds.length + 2];
 		System.arraycopy(flds, 0, fields, 0, flds.length);
-		fields[fields.length - 2] = xml;
+		fields[fields.length - 2] = blob;
 		fields[fields.length - 1] = uuid;// caseId(edit.getId());
 
 		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( RESOURCE_UUID = ? )";
@@ -791,14 +841,13 @@ public class BaseDbSingleStorage
 	public void commitResource(Edit edit)
 	{
 		// form the SQL statement and the var w/ the XML
-		Document doc = Xml.createDocument();
-		edit.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(edit);
+		
 		Object[] flds = m_user.storageFields(edit);
 		if (flds == null) flds = new Object[0];
 		Object[] fields = new Object[flds.length + 2];
 		System.arraycopy(flds, 0, fields, 0, flds.length);
-		fields[fields.length - 2] = xml;
+		fields[fields.length - 2] = blob;
 		fields[fields.length - 1] = caseId(edit.getId());
 
 		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( "
@@ -1076,4 +1125,71 @@ public class BaseDbSingleStorage
 			return recordId;
 		}
 	}
+	
+	/**
+	 * @param entry
+	 * @return
+	 */
+	private String getBlob(Entity entry)
+	{
+		Runtime r = Runtime.getRuntime();
+		long ms = r.freeMemory();
+		long start = System.currentTimeMillis();
+		try
+		{
+			String blob = null;
+			if (m_user instanceof EntityReader)
+			{
+				EntityReader er_user = (EntityReader) m_user;
+				if (er_user.isMigrateData())
+				{
+					try
+					{
+
+						EntityReaderHandler erHandler = er_user.getHandler();
+						blob = erHandler.toString(entry);
+
+					}
+					catch (EntityParseException ep)
+					{
+						M_log.warn("Unable to Serialize Entity, falling back to XML "
+								+ entry.getId(), ep);
+					}
+				}
+
+			}
+			if (blob == null)
+			{
+
+				Document doc = Xml.createDocument();
+				entry.toXml(doc, new Stack());
+				blob = Xml.writeDocumentToString(doc);
+
+			}
+			return blob;
+		}
+		finally
+		{
+			long t = System.currentTimeMillis() - start;
+			long me = r.freeMemory();
+			long md = ms - me;
+			if ( md >= 0 ) {
+				mtotal +=md;
+			} else {
+				if ( ntime != 0 ) {
+					mtotal += (mtotal/ntime);
+				}
+			}
+			ttotal += t;
+			ntime++;
+			if (ntime % 100 == 0)
+			{
+				double a = (1.0 * ttotal) / (1.0 * ntime);
+				double m = (1.0 * mtotal) / (1.0 * ntime);
+				M_log.debug("Average Serialization now " + (a) + "ms "+m+" bytes");
+			}
+
+		}
+	}
+
 }

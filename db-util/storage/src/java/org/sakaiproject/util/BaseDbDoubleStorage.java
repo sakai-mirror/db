@@ -38,6 +38,11 @@ import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Edit;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.ResourceProperties;
+import org.sakaiproject.entity.api.serialize.EntityDoubleReader;
+import org.sakaiproject.entity.api.serialize.EntityDoubleReaderHandler;
+import org.sakaiproject.entity.api.serialize.EntityParseException;
+import org.sakaiproject.entity.api.serialize.EntityReader;
+import org.sakaiproject.entity.api.serialize.EntityReaderHandler;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.time.api.Time;
 import org.sakaiproject.time.cover.TimeService;
@@ -133,6 +138,18 @@ public class BaseDbDoubleStorage
 
 	/** The db handler we are using. */
 	protected DoubleStorageSql doubleStorageSql;
+
+	private long ttotal = 0;
+
+	private int ntime = 0;
+
+	private long rttotal = 0;
+
+	private long rntime = 0;
+
+	private long rmtotal = 0;
+
+	private long mtotal = 0;
 
 	public void setDatabaseBeans(Map databaseBeans)
 	{
@@ -243,14 +260,25 @@ public class BaseDbDoubleStorage
 	 */
 	protected Entity readContainer(String xml)
 	{
+		Runtime r = Runtime.getRuntime();
+		long start = System.currentTimeMillis();
+		long ms = r.freeMemory();
+		String type = "";
 		try
 		{
-			if ( m_user instanceof SAXEntityReader ) {
+			if ( m_user instanceof EntityReader ) {
+				type = "direct";
+				EntityReader er_user = (EntityReader) m_user;
+				EntityReaderHandler erHandler = er_user.getHandler();
+				return erHandler.parseResource(xml);
+			} else if ( m_user instanceof SAXEntityReader ) {
+				type = "sax";
 				SAXEntityReader sm_user = (SAXEntityReader) m_user;
 				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
 				Xml.processString(xml, deh);
 				return deh.getEntity();
 			} else {
+				type = "dom";
 				// read the xml
 				Document doc = Xml.readDocumentFromString(xml);
 	
@@ -275,6 +303,28 @@ public class BaseDbDoubleStorage
 			M_log.warn("readContainer(): "+e.getMessage());
 			M_log.info("readContainer(): ", e);
 			return null;
+		}
+		finally
+		{
+			long t = System.currentTimeMillis() - start;
+			long me = r.freeMemory();
+			long md = ms - me;
+			if ( md >= 0 ) {
+				rmtotal +=md;
+			} else {
+				if ( rntime != 0 ) {
+					rmtotal += (rmtotal/rntime);
+				}
+			}
+			rttotal += t;
+			rntime++;
+			if (rntime % 100 == 0)
+			{
+				double a = (1.0 * rttotal) / (1.0 * rntime);
+				double m = (1.0 * rmtotal) / (1.0 * rntime);
+				M_log.debug("Average "+type+" Parse now " + (a) + "ms "+m+" bytes");
+			}
+
 		}
 	}
 
@@ -361,15 +411,13 @@ public class BaseDbDoubleStorage
 		Entity entry = m_user.newContainer(ref);
 
 		// form the XML and SQL for the insert
-		Document doc = Xml.createDocument();
-		entry.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(entry);
 
 		String statement = doubleStorageSql.getInsertSql(m_containerTableName, insertFields(m_containerTableIdField, null, M_containerExtraFields,
 				"XML"));
 		Object[] fields = new Object[2];
 		fields[0] = entry.getReference();
-		fields[1] = xml;
+		fields[1] = blob;
 
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
@@ -387,6 +435,7 @@ public class BaseDbDoubleStorage
 
 		return edit;
 	}
+
 
 	/**
 	 * Get a lock on the Container with this id, or null if a lock cannot be gotten.
@@ -490,12 +539,10 @@ public class BaseDbDoubleStorage
 	public void commitContainer(Edit edit)
 	{
 		// form the SQL statement and the var w/ the XML
-		Document doc = Xml.createDocument();
-		edit.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(edit);
 		String statement = doubleStorageSql.getUpdateSql(m_containerTableName, m_containerTableIdField);
 		Object[] fields = new Object[2];
-		fields[0] = xml;
+		fields[0] = blob;
 		fields[1] = edit.getReference();
 
 		if (m_locksAreInDb)
@@ -662,10 +709,21 @@ public class BaseDbDoubleStorage
 	 */
 	protected Entity readResource(Entity container, String xml)
 	{
+		Runtime r = Runtime.getRuntime();
+		long ms = r.freeMemory();
+		long start = System.currentTimeMillis();
+		String type = "";
 		try
 		{
-			if (m_user instanceof SAXEntityReader)
+			if ( m_user instanceof EntityDoubleReader ) {
+				type = "direct";
+				EntityDoubleReader er_user = (EntityDoubleReader) m_user;
+				EntityDoubleReaderHandler erHandler = er_user.getDoubleHandler();
+				return erHandler.parseResource(container,xml);
+			} 
+			else if (m_user instanceof SAXEntityReader)
 			{
+				type = "sax";
 				SAXEntityReader sm_user = (SAXEntityReader) m_user;
 				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user
 						.getServices());
@@ -675,6 +733,7 @@ public class BaseDbDoubleStorage
 			}
 			else
 			{
+				type = "dom";
 				// read the xml
 				Document doc = Xml.readDocumentFromString(xml);
 
@@ -699,6 +758,29 @@ public class BaseDbDoubleStorage
 			M_log.info("readResource(): ", e);
 			return null;
 		}
+		finally
+		{
+			long t = System.currentTimeMillis() - start;
+			long me = r.freeMemory();
+			long md = ms - me;
+			if ( md >= 0 ) {
+				rmtotal +=md;
+			} else {
+				if ( rntime != 0 ) {
+					rmtotal += (rmtotal/rntime);
+				}
+			}
+			rttotal += t;
+			rntime++;
+			if (rntime % 100 == 0)
+			{
+				double a = (1.0 * rttotal) / (1.0 * rntime);
+				double m = (1.0 * rmtotal) / (1.0 * rntime);
+				M_log.debug("Average "+type+" Parse now " + (a) + "ms "+m+" bytes");
+			}
+
+		}
+
 	}
 
 	/**
@@ -828,9 +910,7 @@ public class BaseDbDoubleStorage
 		Entity entry = m_user.newResource(container, id, others);
 
 		// form the XML and SQL for the insert
-		Document doc = Xml.createDocument();
-		entry.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(entry);
 
 		String statement = doubleStorageSql.getInsertSql3(m_resourceTableName, insertFields(m_containerTableIdField, m_resourceTableIdField,
 				m_resourceTableOtherFields, "XML"), valuesParams(m_resourceTableOtherFields));
@@ -840,7 +920,7 @@ public class BaseDbDoubleStorage
 		System.arraycopy(flds, 0, fields, 2, flds.length);
 		fields[0] = container.getReference();
 		fields[1] = entry.getId();
-		fields[fields.length - 1] = xml;
+		fields[fields.length - 1] = blob;
 
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
@@ -968,9 +1048,7 @@ public class BaseDbDoubleStorage
 	public void commitResource(Entity container, Edit edit)
 	{
 		// form the SQL statement and the var w/ the XML
-		Document doc = Xml.createDocument();
-		edit.toXml(doc, new Stack());
-		String xml = Xml.writeDocumentToString(doc);
+		String blob = getBlob(edit);
 		String statement = doubleStorageSql.getUpdate2Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField,
 				updateSet(m_resourceTableOtherFields));
 
@@ -978,7 +1056,7 @@ public class BaseDbDoubleStorage
 		if (flds == null) flds = new Object[0];
 		Object[] fields = new Object[flds.length + 3];
 		System.arraycopy(flds, 0, fields, 0, flds.length);
-		fields[fields.length - 3] = xml;
+		fields[fields.length - 3] = blob;
 		fields[fields.length - 2] = container.getReference();
 		fields[fields.length - 1] = edit.getId();
 
@@ -1464,4 +1542,71 @@ public class BaseDbDoubleStorage
 
 		return all;
 	}
+	
+	/**
+	 * @param entry
+	 * @return
+	 */
+	private String getBlob(Entity entry)
+	{
+		Runtime r = Runtime.getRuntime();
+		long ms = r.freeMemory();
+		long start = System.currentTimeMillis();
+		try
+		{
+			String blob = null;
+			if (m_user instanceof EntityReader)
+			{
+				EntityReader er_user = (EntityReader) m_user;
+				if (er_user.isMigrateData())
+				{
+					try
+					{
+
+						EntityReaderHandler erHandler = er_user.getHandler();
+						blob = erHandler.toString(entry);
+
+					}
+					catch (EntityParseException ep)
+					{
+						M_log.warn("Unable to Serialize Entity, falling back to XML "
+								+ entry.getId(), ep);
+					}
+				}
+
+			}
+			if (blob == null)
+			{
+
+				Document doc = Xml.createDocument();
+				entry.toXml(doc, new Stack());
+				blob = Xml.writeDocumentToString(doc);
+
+			}
+			return blob;
+		}
+		finally
+		{
+			long t = System.currentTimeMillis() - start;
+			long me = r.freeMemory();
+			long md = ms - me;
+			if ( md >= 0 ) {
+				mtotal +=md;
+			} else {
+				if ( ntime != 0 ) {
+					mtotal += (mtotal/ntime);
+				}
+			}
+			ttotal += t;
+			ntime++;
+			if (ntime % 100 == 0)
+			{
+				double a = (1.0 * ttotal) / (1.0 * ntime);
+				double m = (1.0 * mtotal) / (1.0 * ntime);
+				M_log.debug("Average Serialization now " + (a) + "ms "+m+" bytes");
+			}
+
+		}
+	}
+
 }
