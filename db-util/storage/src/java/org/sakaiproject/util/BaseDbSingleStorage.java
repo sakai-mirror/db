@@ -655,7 +655,7 @@ public class BaseDbSingleStorage
 	/** Construct the SQL statement */
 	protected String insertDeleteFields(String before, String[] fields, String uuid, String date, String userId, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 		buf.append(before);
 		buf.append(",");
@@ -754,7 +754,7 @@ public class BaseDbSingleStorage
 				// read the record and get a lock on it (non blocking)
 				String statement = "select XML from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = '"
 						+ Validator.escapeSql(caseId(id)) + "' )" + " for update nowait";
-				StringBuffer result = new StringBuffer();
+				StringBuilder result = new StringBuilder();
 				Connection lock = m_sql.dbReadLock(statement, result);
 
 				// for missing or already locked...
@@ -1017,7 +1017,7 @@ public class BaseDbSingleStorage
 	protected String valuesParams(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(" ?,");
@@ -1035,7 +1035,7 @@ public class BaseDbSingleStorage
 	protected String updateSet(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(fields[i] + " = ?,");
@@ -1056,7 +1056,7 @@ public class BaseDbSingleStorage
 	 */
 	protected String insertFields(String before, String[] fields, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 
 		buf.append(before);

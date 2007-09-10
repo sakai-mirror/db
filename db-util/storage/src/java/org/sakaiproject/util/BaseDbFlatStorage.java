@@ -1345,7 +1345,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String valuesParams(String[] fields, String dbidField)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length - 1; i++)
 		{
 			if (fields[i].startsWith("("))
@@ -1383,7 +1383,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String updateSet(String[] fields)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 
 		// we assume the first field is the primary key, and we don't want to include that in the update, so start at 1
 		for (int i = 1; i < fields.length; i++)
@@ -1431,7 +1431,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String fieldList(String[] fields, String dbidField)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 
 		for (int i = 0; i < fields.length - 1; i++)
 		{

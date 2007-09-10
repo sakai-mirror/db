@@ -506,7 +506,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -1136,7 +1136,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -1313,7 +1313,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -1588,16 +1588,16 @@ public abstract class BasicSqlService implements SqlService
 	 * @param sql
 	 *        The sql statement.
 	 * @param field
-	 *        A StringBuffer that will be filled with the field.
+	 *        A StringBuilder that will be filled with the field.
 	 * @return The Connection holding the lock.
 	 */
-	public Connection dbReadLock(String sql, StringBuffer field)
+	public Connection dbReadLock(String sql, StringBuilder field)
 	{
 		// Note: does not support TRANSACTION_CONNECTION -ggolden
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbReadLock(String " + sql + ", StringBuffer " + field + ")");
+			LOG.debug("dbReadLock(String " + sql + ", StringBuilder " + field + ")");
 		}
 
 		Connection conn = null;
@@ -1811,7 +1811,7 @@ public abstract class BasicSqlService implements SqlService
 			{
 				// read the first line, skipping any '--' comment lines
 				boolean firstLine = true;
-				StringBuffer buf = new StringBuffer();
+				StringBuilder buf = new StringBuilder();
 				for (String line = r.readLine(); line != null; line = r.readLine())
 				{
 					line = line.trim();
@@ -1966,9 +1966,9 @@ public abstract class BasicSqlService implements SqlService
 		// no error will mess us up!
 		try
 		{
-			// StringBuffer buf = (StringBuffer) CurrentService.getInThread("DEBUG");
+			// StringBuilder buf = (StringBuilder) CurrentService.getInThread("DEBUG");
 			// if (buf == null) return;
-			StringBuffer buf = new StringBuffer(2048);
+			StringBuilder buf = new StringBuilder(2048);
 
 			// skip some chatter
 			// if (str.indexOf("SAKAI_CLUSTER") != -1) return;
@@ -1994,7 +1994,7 @@ public abstract class BasicSqlService implements SqlService
 
 	protected String debugFields(Object[] fields)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		if (fields != null)
 		{
 			for (int i = 0; i < fields.length; i++)

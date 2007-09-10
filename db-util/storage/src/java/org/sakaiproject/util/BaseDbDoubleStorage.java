@@ -454,7 +454,7 @@ public class BaseDbDoubleStorage
 			{
 				// read the record and get a lock on it (non blocking)
 				String statement = doubleStorageSql.getSelectXml3Sql(m_containerTableName, m_containerTableIdField, Validator.escapeSql(ref));
-				StringBuffer result = new StringBuffer();
+				StringBuilder result = new StringBuilder();
 				Connection lock = m_sql.dbReadLock(statement, result);
 
 				// for missing or already locked...
@@ -959,7 +959,7 @@ public class BaseDbDoubleStorage
 				// read the record and get a lock on it (non blocking)
 				String statement = doubleStorageSql.getSelectXml6Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField,
 						Validator.escapeSql(id), Validator.escapeSql(container.getReference()));
-				StringBuffer result = new StringBuffer();
+				StringBuilder result = new StringBuilder();
 				Connection lock = m_sql.dbReadLock(statement, result);
 
 				// for missing or already locked...
@@ -1227,7 +1227,7 @@ public class BaseDbDoubleStorage
 	protected String valuesParams(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(" ?,");
@@ -1245,7 +1245,7 @@ public class BaseDbDoubleStorage
 	protected String updateSet(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(fields[i] + " = ?,");
@@ -1268,7 +1268,7 @@ public class BaseDbDoubleStorage
 	 */
 	protected String insertFields(String before1, String before2, String[] fields, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 
 		buf.append(before1);
@@ -1320,7 +1320,7 @@ public class BaseDbDoubleStorage
 			filterAfter = true;
 		}
 
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		int numFields = 1;
 
 		// start the outer statement, later finished with a limiting clause
