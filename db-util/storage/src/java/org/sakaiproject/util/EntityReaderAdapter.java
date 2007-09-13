@@ -28,7 +28,6 @@ import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.entity.api.Entity;
 import org.sakaiproject.entity.api.serialize.EntityDoubleReaderHandler;
 import org.sakaiproject.entity.api.serialize.EntityParseException;
-import org.sakaiproject.entity.api.serialize.EntityReader;
 import org.sakaiproject.entity.api.serialize.EntityReaderHandler;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -71,10 +70,11 @@ public class EntityReaderAdapter implements EntityReaderHandler
 	 * @throws SAXException
 	 * @see org.sakaiproject.entity.api.serialize.EntityReader#parseResource(java.lang.String)
 	 */
-	public Entity parseResource(String xml) throws EntityParseException
+	public Entity parse(String xml, byte[] blob) throws EntityParseException
 	{
-		if (!target.accept(xml))
-		{
+		if ( target.accept(blob) ) {
+			return target.parse(xml,blob);			
+		} else {
 			if (saxEntityReader != null)
 			{
 				try
@@ -115,8 +115,6 @@ public class EntityReaderAdapter implements EntityReaderHandler
 							ex);
 				}
 			}
-		} else {
-			return target.parseResource(xml);
 		}
 	}
 
@@ -126,9 +124,12 @@ public class EntityReaderAdapter implements EntityReaderHandler
 	 * @see org.sakaiproject.entity.api.serialize.EntityReader#parseResource(org.sakaiproject.entity.api.Entity,
 	 *      java.lang.String)
 	 */
-	public Entity parseResource(Entity container, String xml) throws EntityParseException
+	public Entity parse(Entity container, String xml, byte[] blob) throws EntityParseException
 	{
-		if (!target.accept(xml) || !(target instanceof EntityDoubleReaderHandler) )
+		if ( target.accept(blob) && (target instanceof EntityDoubleReaderHandler) ) {
+			return ((EntityDoubleReaderHandler)target).parse(container,xml,blob);			
+		} 
+		else
 		{
 			if (saxEntityReader != null)
 			{
@@ -172,8 +173,6 @@ public class EntityReaderAdapter implements EntityReaderHandler
 							ex);
 				}
 			}
-		} else {
-			return ((EntityDoubleReaderHandler)target).parseResource(container,xml);
 		}
 	}
 	/**
@@ -223,15 +222,15 @@ public class EntityReaderAdapter implements EntityReaderHandler
 	 * @throws EntityParseException 
 	 * @see org.sakaiproject.entity.api.serialize.EntityReader#toString(org.sakaiproject.entity.api.Entity)
 	 */
-	public String toString(Entity entry) throws EntityParseException
+	public byte[] serialize(Entity entry) throws EntityParseException
 	{
-		return target.toString(entry);
+		return target.serialize(entry);
 	}
 	/** 
 	 * Either this or the target will parse whatever is sent to it
 	 * @see org.sakaiproject.entity.api.serialize.EntityReader#accept(java.lang.String)
 	 */
-	public boolean accept(String blob)
+	public boolean accept(byte[] blob)
 	{
 		return true;
 	}

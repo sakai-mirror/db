@@ -1682,6 +1682,105 @@ public abstract class BasicSqlService implements SqlService
 		return conn;
 	}
 
+	
+	/**
+	 * Read a single field from the db, from a single record, return the value found, and lock for update.
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param reader
+	 *        A SqlReader that buils the result.
+	 * @return The Connection holding the lock.
+	 */
+	public Connection dbReadLock(String sql, SqlReader reader)
+	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
+		if (LOG.isDebugEnabled())
+		{
+			LOG.debug("dbReadLock(String " + sql + ")");
+		}
+
+		Connection conn = null;
+		Statement stmt = null;
+		ResultSet result = null;
+		boolean autoCommit = false;
+		boolean resetAutoCommit = false;
+		boolean closeConn = false;
+
+		try
+		{
+			// get a new conncetion
+			conn = borrowConnection();
+
+			// adjust to turn off auto commit - we need a transaction
+			autoCommit = conn.getAutoCommit();
+			if (autoCommit)
+			{
+				conn.setAutoCommit(false);
+				resetAutoCommit = true;
+			}
+
+			if (LOG.isDebugEnabled()) LOG.debug("Sql.dbReadLock():\n" + sql);
+
+			// create a statement and execute
+			stmt = conn.createStatement();
+			result = stmt.executeQuery(sql);
+
+			// if we have a result record
+			if (result.next())
+			{
+				reader.readSqlResultRecord(result);
+			}
+
+			// otherwise we fail
+			else
+			{
+				closeConn = true;
+			}
+		}
+
+		// this is likely the error when the record is otherwise locked - we fail
+		catch (SQLException e)
+		{
+			// Note: ORA-00054 gives an e.getErrorCode() of 54, if anyone cares...
+			// LOG.warn("Sql.dbUpdateLock(): " + e.getErrorCode() + " - " + e);
+			closeConn = true;
+		}
+
+		catch (Exception e)
+		{
+			LOG.warn("Sql.dbReadLock(): " + e);
+			closeConn = true;
+		}
+
+		finally
+		{
+			try
+			{
+				// close the result and statement
+				if (null != result) result.close();
+				if (null != stmt) stmt.close();
+
+				// if we are failing, restore and release the connectoin
+				if ((closeConn) && (conn != null))
+				{
+					// just in case we got a lock
+					conn.rollback();
+					if (resetAutoCommit) conn.setAutoCommit(autoCommit);
+					returnConnection(conn);
+					conn = null;
+				}
+			}
+			catch (Exception e)
+			{
+				LOG.warn("Sql.dbReadLock(): " + e);
+			}
+		}
+
+		return conn;
+	}
+
 	/**
 	 * Commit the update that was locked on this connection.
 	 * 
@@ -1940,6 +2039,12 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setBoolean(pos, ((Boolean) fields[i]).booleanValue());
 					pos++;
 				}
+				else if ( fields[i] instanceof byte[] ) 
+				{
+					pstmt.setBytes(pos, (byte[])fields[i]);
+					pos++;
+				}
+				
 				// %%% support any other types specially?
 				else
 				{
