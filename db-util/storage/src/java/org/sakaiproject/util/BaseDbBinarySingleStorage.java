@@ -70,7 +70,7 @@ import org.sakaiproject.time.cover.TimeService;
  */
 public class BaseDbBinarySingleStorage implements DbSingleStorage
 {
-	private static final String STORAGE_FIELDS = "BINARY_ENTITY";
+	public static final String STORAGE_FIELDS = "BINARY_ENTITY";
 
 	/** Our logger. */
 	private static Log M_log = LogFactory.getLog(BaseDbBinarySingleStorage.class);

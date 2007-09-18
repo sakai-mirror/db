@@ -64,6 +64,8 @@ import org.w3c.dom.Element;
  */
 public class BaseDbSingleStorage implements DbSingleStorage 
 {
+	public static final String STORAGE_FIELDS = "XML";
+
 	/** Our logger. */
 	private static Log M_log = LogFactory.getLog(BaseDbSingleStorage.class);
 
