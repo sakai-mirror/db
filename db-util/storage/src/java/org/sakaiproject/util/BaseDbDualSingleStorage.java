@@ -450,6 +450,25 @@ public class BaseDbDualSingleStorage  implements DbSingleStorage
 		return loadResources(sql, fields);
 	}
 
+	/**
+	 * Get all Resources where the given field matches the given value.
+	 * 
+	 * @param field
+	 *        The db field name for the selection.
+	 * @param value
+	 *        The value to select.
+	 * @return The list of all Resources that meet the criteria.
+	 */
+	public List getAllResourcesWhere(String selectBy, String selectByValue, String orderBy, int first, int pageSize)
+	{
+		// read all users from the db
+		String sql = singleStorageSql.getXmlWhereLimitSql(selectBy, orderBy, m_resourceTableName, first, pageSize);
+		Object[] fields = new Object[1];
+		fields[0] = selectByValue;
+		// %%% + "order by " + m_resourceTableOrderField + " asc";
+		return loadResources(sql, fields);
+	}
+
 	protected List loadResources(String sql, Object[] fields)
 	{
 		List all = m_sql.dbRead(sql, fields, new SqlReader()
