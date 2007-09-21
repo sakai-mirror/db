@@ -56,7 +56,11 @@ public class MultiSingleStorageSqlOracle extends MultiSingleStorageSqlDefault
 	 * */
 	public String getXmlWhereLimitSql(String selectBy, String orderBy, String tableName, int first, int maxCount) 
 	{
-		return "select " + storageFields + " from " + tableName + " where ( " + selectBy + " = ? ) order by " + orderBy + " asc limit " + maxCount + " offset " + first ;
+		// consider using RANK() as in getXmlSql(String field, String table, int first, int last) above
+		// if this has performance issues
+		return "select * from ( select yrqr.*, rownum rnum from ( select " + storageFields + " from " + tableName 
+			+ " where ( " + selectBy + " = ? ) order by " + orderBy + " asc) yrqr where rownum <= " 
+			+ (first + maxCount - 1) + ") where rnum >= " + first;
 	}
 
 	/**
