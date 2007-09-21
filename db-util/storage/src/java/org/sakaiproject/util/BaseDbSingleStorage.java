@@ -429,6 +429,28 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return all;
 	}
 
+	/**
+	 * Get a limited number of Resources a given field matches a given value, returned in ascending order 
+	 * by another field.  The limit on the number of rows is specified by values for the first item to be 
+	 * retrieved (indexed from 0) and the maxCount.
+	 * @param selectBy The name of a field to be used in selecting resources.
+	 * @param selectByValue The value to select.
+	 * @param orderBy The name of a field to be used in ordering the resources.
+	 * @param tableName The table on which the query is to operate
+	 * @param first A non-negative integer indicating the first record to return
+	 * @param maxCount A positive integer indicating the maximum number of rows to return
+	 * @return The list of all Resources that meet the criteria.
+	 */
+	public List getAllResourcesWhere(String selectBy, String selectByValue, String orderBy, int first, int maxCount)
+	{
+		// read all users from the db
+		String sql = singleStorageSql.getXmlWhereLimitSql(selectBy, orderBy, m_resourceTableName, first, maxCount);
+		Object[] fields = new Object[1];
+		fields[0] = selectByValue;
+		// %%% + "order by " + m_resourceTableOrderField + " asc";
+		return loadResources(sql, fields);
+	}
+	
 	/* (non-Javadoc)
 	 * @see org.sakaiproject.util.DbSingleStorage#getAllResourcesWhereLike(java.lang.String, java.lang.String)
 	 */

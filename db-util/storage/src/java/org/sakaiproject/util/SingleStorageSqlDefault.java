@@ -94,6 +94,21 @@ public class SingleStorageSqlDefault implements SingleStorageSql
 	}
 
 	/**
+	 * returns the SQL statement which retrieves a limited number of rows selected by a particular value for a specified field 
+	 * (the selectBy parameter) and returned in ascending order by another specified field (the orderBy parameter).  The limit
+	 * on the number of rows is specified by values for the first item to be retrieved (indexed from 0) and the maxCount.
+	 * @param selectBy The name of a field to be used in a where clause with the value provided separately.
+	 * @param orderBy The name of a field to be used in an order-by clause
+	 * @param tableName The table on which the query is to operate
+	 * @param first A non-negative integer indicating the first record to return, indexed from 0.
+	 * @param maxCount A positive integer indicating the maximum number of records to return
+	 * */
+	public String getXmlWhereLimitSql(String selectBy, String orderBy, String tableName, int first, int maxCount) 
+	{
+		return "select XML from " + tableName + " where ( " + selectBy + " = ? ) order by " + orderBy + " asc limit " + maxCount + " offset " + first ;
+	}
+	
+	/**
 	 * returns the sql statement which retrieves the specified field and the xml field from the specified table.
 	 */
 	public String getXmlAndFieldSql(String field, String table)
