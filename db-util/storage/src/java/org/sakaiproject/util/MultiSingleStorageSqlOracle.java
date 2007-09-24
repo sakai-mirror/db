@@ -60,7 +60,7 @@ public class MultiSingleStorageSqlOracle extends MultiSingleStorageSqlDefault
 		// if this has performance issues
 		return "select * from ( select yrqr.*, rownum rnum from ( select " + storageFields + " from " + tableName 
 			+ " where ( " + selectBy + " = ? ) order by " + orderBy + " asc) yrqr where rownum <= " 
-			+ (first + maxCount - 1) + ") where rnum >= " + first;
+			+ (first + maxCount) + ") where rnum > " + first;
 	}
 
 	/**
