@@ -73,4 +73,9 @@ public class BasicSqlServiceSqlMySql extends BasicSqlServiceSqlDefault
 		}
 		return pstmt;
 	}
+
+    public boolean isDeadLockError(int errorCode){        
+        // perhaps due to a mysql deadlock?
+        return (errorCode == 1213);
+    }
 }
