@@ -757,7 +757,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 			String sessionId = UsageSessionService.getSessionId();
 			if (sessionId == null)
 			{
-				sessionId = "";
+				sessionId = ""; // TODO - "" gets converted to a null and will never be able to be cleaned up -AZ (SAK-11841)
 			}
 
 			// collect the fields
