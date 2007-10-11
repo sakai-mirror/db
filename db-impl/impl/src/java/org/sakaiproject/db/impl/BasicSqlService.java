@@ -1219,6 +1219,30 @@ public abstract class BasicSqlService implements SqlService
 			{
 				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
 			}
+
+			// if asked to fail quietly, just return false if we find this error.
+			if (recordAlreadyExists || failQuiet) return false;
+
+			// perhaps due to a mysql deadlock?
+			if (sqlServiceSql.isDeadLockError(e.getErrorCode()))
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbWrite(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceDeadlockException(e);
+			}
+
+			else if (recordAlreadyExists)
+			{
+				// just a little fuss
+				LOG.warn("Sql.dbWrite(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
+				throw new SqlServiceUniqueViolationException(e);
+			}
+			else
+			{
+				// something ELSE went wrong, so lest make a fuss
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " ", e);
+				throw new RuntimeException("SqlService.dbWrite failure", e);
+			}
 		}
 		catch (Exception e)
 		{

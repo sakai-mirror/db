@@ -101,4 +101,9 @@ public class BasicSqlServiceSqlDefault implements SqlServiceSql
 		pstmt.setTimestamp(pos, timestamp, calendar);
 		return pstmt;
 	}
+
+    public boolean isDeadLockError(int errorCode){
+        return false;
+    }
+
 }

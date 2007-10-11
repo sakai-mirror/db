@@ -67,7 +67,7 @@ public class FlatStorageSqlMsSql extends FlatStorageSqlDefault
 		return sql;
 	}
 
-	public Object[] getSelectFieldsFields(int first, int last)
+    public Object[] getSelectFieldsFields(int first, int last)
 	{
 		Object[] fields = new Object[2];
 

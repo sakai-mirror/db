@@ -31,6 +31,12 @@ import java.util.GregorianCalendar;
  */
 public interface SqlServiceSql
 {
+    /**
+     * returns whether the error code is a deadlock error or not
+     * @param errorCode
+     * @return
+     */
+    public boolean isDeadLockError(int errorCode);
 	/**
 	 * returns whether the the database supports reading and updating blobs.
 	 */
