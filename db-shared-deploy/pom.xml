@@ -63,12 +63,15 @@
       <version>2.7.6</version>
       <scope>compile</scope>
     </dependency>
+
+    <!-- this needs to go into common/lib instead -AZ -->
     <dependency>
       <groupId>${sakai.ehcache.groupId}</groupId>
       <artifactId>${sakai.ehcache.artifactId}</artifactId>
       <version>${sakai.ehcache.version}</version>
       <scope>compile</scope>
     </dependency>
+
     <dependency>
       <groupId>${sakai.hibernate.groupId}</groupId>
       <artifactId>${sakai.hibernate.artifactId}</artifactId>
