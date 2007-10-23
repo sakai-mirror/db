@@ -17,6 +17,7 @@
     <module>db-impl/impl</module>
     <module>db-impl/pack</module>
     <module>db-util/storage</module>
+    <module>db-util/conversion</module>
     <module>db-shared-deploy</module>
   </modules>
 </project>
