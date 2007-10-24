@@ -258,5 +258,15 @@
     	<property name="timeToIdle" ><value>600</value></property>
   	</bean>
 	
+	<!-- enables JMX on hibernate -->
+	<bean id="org.sakaiproject.springframework.orm.hibernate.SessionFactoryBase.jmxAgent" 
+  			class="org.sakaiproject.springframework.orm.hibernate.HibernateJMXAgent"
+  			init-method="init" >
+  	
+		<property name="sessionFactory">
+			<ref bean="org.sakaiproject.springframework.orm.hibernate.GlobalSessionFactory" />
+		</property>
+	</bean>
+	
 
 </beans>
