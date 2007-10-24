@@ -19,34 +19,41 @@
  *
  **********************************************************************************/
 
-package org.sakaiproject.assignment.impl.conversion.impl;
+package org.sakaiproject.util.conversion;
 
 import java.util.Properties;
 
 /**
  * @author ieb
- *
  */
 public class SchemaConversionDriver
 {
 
 	private Properties p;
+
 	private String base;
 
-	public SchemaConversionDriver() {
-		
+	public SchemaConversionDriver()
+	{
+
 	}
-	public void load(Properties p, String base) {
+
+	public void load(Properties p, String base)
+	{
 		this.p = p;
 		this.base = base;
 	}
-	
-	public String getHandler() {
+
+	public String getHandler()
+	{
 		return p.getProperty(base);
 	}
-	public String getHandlerClass() {
-		return p.getProperty(base+".handler.class");
+
+	public String getHandlerClass()
+	{
+		return p.getProperty(base + ".handler.class");
 	}
+
 	/**
 	 * An SQL statement to select the next list of items to process, It should
 	 * select these from the Register table, in such a way as to ensure that
@@ -56,8 +63,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getSelectNextBatch() {
-		return p.getProperty(base+".select.next.batch");
+	public String getSelectNextBatch()
+	{
+		return p.getProperty(base + ".select.next.batch");
 	}
 
 	/**
@@ -66,8 +74,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getMarkNextBatch() {
-		return p.getProperty(base+".mark.next.batch");
+	public String getMarkNextBatch()
+	{
+		return p.getProperty(base + ".mark.next.batch");
 
 	}
 
@@ -78,8 +87,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getCompleteNextBatch() {
-		return p.getProperty(base+".complete.next.batch");
+	public String getCompleteNextBatch()
+	{
+		return p.getProperty(base + ".complete.next.batch");
 	}
 
 	/**
@@ -89,17 +99,19 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getSelectRecord() {
-		return p.getProperty(base+".select.record");
+	public String getSelectRecord()
+	{
+		return p.getProperty(base + ".select.record");
 	}
 
 	/**
 	 * SQL to select the final set of objects for validation processing
+	 * 
 	 * @return
 	 */
 	public String getSelectValidateRecord()
 	{
-		return p.getProperty(base+".select.validate.record");
+		return p.getProperty(base + ".select.validate.record");
 	}
 
 	/**
@@ -109,8 +121,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getUpdateRecord() {
-		return p.getProperty(base+".update.record");
+	public String getUpdateRecord()
+	{
+		return p.getProperty(base + ".update.record");
 	}
 
 	/**
@@ -119,9 +132,10 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getDropMigrateTable() {
-		return p.getProperty(base+".drop.migrate.table");
-		
+	public String getDropMigrateTable()
+	{
+		return p.getProperty(base + ".drop.migrate.table");
+
 	}
 
 	/**
@@ -131,8 +145,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getCheckMigrateTable() {
-	return p.getProperty(base+".check.migrate.table");
+	public String getCheckMigrateTable()
+	{
+		return p.getProperty(base + ".check.migrate.table");
 	}
 
 	/**
@@ -141,8 +156,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getCreateMigrateTable() {
-		return p.getProperty(base+".create.migrate.table");
+	public String getCreateMigrateTable()
+	{
+		return p.getProperty(base + ".create.migrate.table");
 	}
 
 	/**
@@ -152,89 +168,103 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getPopulateMigrateTable() {
-		return p.getProperty(base+".populate.migrate.table");
+	public String getPopulateMigrateTable()
+	{
+		return p.getProperty(base + ".populate.migrate.table");
 	}
-	
+
 	/**
-	 * An array of strings identifying the names of columns that need to be added before the conversion can proceed.
-	 * Null if no new columns need to be added.
+	 * An array of strings identifying the names of columns that need to be
+	 * added before the conversion can proceed. Null if no new columns need to
+	 * be added.
+	 * 
 	 * @return
 	 */
-	public String[] getNewColumnNames() {
+	public String[] getNewColumnNames()
+	{
 		String nameStr = p.getProperty(base + ".new.columns.names");
 		System.out.println(base + ".new.columns.names == " + nameStr);
 		String[] names = null;
-		if(nameStr != null && ! nameStr.trim().equals(""))
+		if (nameStr != null && !nameStr.trim().equals(""))
 		{
 			names = nameStr.split(",");
 		}
 		System.out.println(base + ".new.columns.names == " + names);
 		return names;
 	}
-	
+
 	/**
-	 * An array of strings identifying the datatypes of columns that need to be added before the conversion can proceed.
-	 * Each element in the array returned by getNewColumnNames() has a corresponding datatype in this array at the
-	 * same index as in the array returned by getNewColumnNames(). The return value may be null if no new columns need 
-	 * to be added, in which case getNewColumnNames() returns null.
+	 * An array of strings identifying the datatypes of columns that need to be
+	 * added before the conversion can proceed. Each element in the array
+	 * returned by getNewColumnNames() has a corresponding datatype in this
+	 * array at the same index as in the array returned by getNewColumnNames().
+	 * The return value may be null if no new columns need to be added, in which
+	 * case getNewColumnNames() returns null.
 	 * 
 	 * @return
 	 */
-	public String[] getNewColumnTypes() {
+	public String[] getNewColumnTypes()
+	{
 		String typeStr = p.getProperty(base + ".new.columns.types");
 		System.out.println(base + ".new.columns.types == " + typeStr);
 		String[] types = null;
-		if(typeStr != null && ! typeStr.trim().equals(""))
+		if (typeStr != null && !typeStr.trim().equals(""))
 		{
 			types = typeStr.split(",");
 		}
 		System.out.println(base + ".new.columns.types == " + types);
 		return types;
 	}
-	
+
 	/**
-	 * An array of strings identifying the qualifiers for columns that need to be added before the conversion can proceed.
-	 * For example, a qualifier might be the SQL to specify a default value or some other declaration made at the time a 
-	 * column is created. Each element in the array returned by getNewColumnNames() has a corresponding entry in this array 
-	 * at the same index as in the array returned by getNewColumnNames(). The qualifier for any or all columns may be a 
-	 * string containing single space character if the column has no qualifier. The return value may be null if no new columns 
-	 * need to be added, in which case getNewColumnNames() returns null.
+	 * An array of strings identifying the qualifiers for columns that need to
+	 * be added before the conversion can proceed. For example, a qualifier
+	 * might be the SQL to specify a default value or some other declaration
+	 * made at the time a column is created. Each element in the array returned
+	 * by getNewColumnNames() has a corresponding entry in this array at the
+	 * same index as in the array returned by getNewColumnNames(). The qualifier
+	 * for any or all columns may be a string containing single space character
+	 * if the column has no qualifier. The return value may be null if no new
+	 * columns need to be added, in which case getNewColumnNames() returns null.
 	 * 
 	 * @return
 	 */
-	public String[] getNewColumnQualifiers() {
+	public String[] getNewColumnQualifiers()
+	{
 		String qualifierStr = p.getProperty(base + ".new.columns.qualifiers");
 		System.out.println(base + ".new.columns.qualifiers == " + qualifierStr);
 		String[] qualifiers = null;
-		if(qualifierStr != null && ! qualifierStr.trim().equals(""))
+		if (qualifierStr != null && !qualifierStr.trim().equals(""))
 		{
 			qualifiers = qualifierStr.split(",");
 		}
 		System.out.println(base + ".new.columns.qualifiers == " + qualifiers);
 		return qualifiers;
 	}
-	
-	public String getTestNewColumn(String name) {
+
+	public String getTestNewColumn(String name)
+	{
 		String sql = p.getProperty(base + ".new.columns.test");
 		sql = sql.replaceAll("<name>", name);
 		return sql;
 	}
-	
-	public String getAddNewColumn(String name, String type, String qualifier) {
+
+	public String getAddNewColumn(String name, String type, String qualifier)
+	{
 		String sql = p.getProperty(base + ".new.columns.add");
-		sql = sql.replaceAll("<name>", name).replaceAll("<type>", type).replaceAll("<qualifier>", qualifier);
+		sql = sql.replaceAll("<name>", name).replaceAll("<type>", type).replaceAll(
+				"<qualifier>", qualifier);
 		return sql;
 	}
 
 	public String getSelectDuplicates()
 	{
-		return p.getProperty(base+".select.duplicates");
+		return p.getProperty(base + ".select.duplicates");
 	}
-	
+
 	public String getRemoveDuplicates()
 	{
-		return p.getProperty(base+".remove.duplicates");
+		return p.getProperty(base + ".remove.duplicates");
 	}
 
 }
