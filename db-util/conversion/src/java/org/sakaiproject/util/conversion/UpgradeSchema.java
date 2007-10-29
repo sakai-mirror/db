@@ -19,17 +19,12 @@
  *
  **********************************************************************************/
 
-package org.sakaiproject.assignment.impl.conversion.impl;
+package org.sakaiproject.util.conversion;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
@@ -38,9 +33,7 @@ import org.apache.commons.dbcp.datasources.SharedPoolDataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.sakaiproject.assignment.impl.conversion.api.SchemaConversionHandler;
-import org.sakaiproject.assignment.impl.conversion.impl.SchemaConversionController;;
-
+ 
 /**
  * @author ieb
  */

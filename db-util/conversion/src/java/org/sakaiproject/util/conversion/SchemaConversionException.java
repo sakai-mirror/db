@@ -19,13 +19,13 @@
  *
  **********************************************************************************/
 
-package org.sakaiproject.assignment.impl.conversion.impl;
+package org.sakaiproject.util.conversion;
 
 /**
- * A major problem has been encountered with the conversion, rollback has been attempted and the conversion should
- * now be aborted.
+ * A major problem has been encountered with the conversion, rollback has been
+ * attempted and the conversion should now be aborted.
+ * 
  * @author ieb
- *
  */
 public class SchemaConversionException extends Exception
 {

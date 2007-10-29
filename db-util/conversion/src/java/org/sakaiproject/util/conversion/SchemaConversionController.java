@@ -19,7 +19,7 @@
  *
  **********************************************************************************/
 
-package org.sakaiproject.assignment.impl.conversion.impl;
+package org.sakaiproject.util.conversion;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -33,8 +33,6 @@ import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.sakaiproject.assignment.impl.conversion.impl.SchemaConversionException;
-import org.sakaiproject.util.conversion.SchemaConversionHandler;
 
 /**
  * @author ieb
@@ -43,9 +41,11 @@ public class SchemaConversionController
 {
 
 	private static final Log log = LogFactory.getLog(SchemaConversionController.class);
+
 	private long nrecords = 0;
-	
-	public void init(DataSource datasource, SchemaConversionHandler convert, SchemaConversionDriver driver) throws SchemaConversionException 
+
+	public void init(DataSource datasource, SchemaConversionHandler convert,
+			SchemaConversionDriver driver) throws SchemaConversionException
 	{
 		// we need some way of identifying those records that have not been
 		// convertd.
@@ -59,17 +59,18 @@ public class SchemaConversionController
 		}
 		catch (Exception e)
 		{
-			log.error("Failed to perform migration setup ",e);
+			log.error("Failed to perform migration setup ", e);
 			try
 			{
 				connection.rollback();
-				log.error("Rollback Sucessfull ",e);
+				log.error("Rollback Sucessfull ", e);
 			}
 			catch (Exception ex)
 			{
-				log.error("Rollback Failed ",e);
+				log.error("Rollback Failed ", e);
 			}
-			throw new SchemaConversionException("Schema Conversion has been aborted due to earlier errors, please investigate ");
+			throw new SchemaConversionException(
+					"Schema Conversion has been aborted due to earlier errors, please investigate ");
 
 		}
 		finally
@@ -89,7 +90,8 @@ public class SchemaConversionController
 
 	}
 
-	public boolean migrate(DataSource datasource, SchemaConversionHandler convert, SchemaConversionDriver driver) throws SchemaConversionException
+	public boolean migrate(DataSource datasource, SchemaConversionHandler convert,
+			SchemaConversionDriver driver) throws SchemaConversionException
 	{
 		boolean alldone = false;
 		Connection connection = null;
@@ -105,12 +107,12 @@ public class SchemaConversionController
 			connection = datasource.getConnection();
 			selectNextBatch = connection.prepareStatement(driver.getSelectNextBatch());
 			markNextBatch = connection.prepareStatement(driver.getMarkNextBatch());
-			completeNextBatch = connection.prepareStatement(driver
-					.getCompleteNextBatch());
+			completeNextBatch = connection
+					.prepareStatement(driver.getCompleteNextBatch());
 			selectRecord = connection.prepareStatement(driver.getSelectRecord());
-			selectValidateRecord = connection.prepareStatement(driver.getSelectValidateRecord());
+			selectValidateRecord = connection.prepareStatement(driver
+					.getSelectValidateRecord());
 			updateRecord = connection.prepareStatement(driver.getUpdateRecord());
-
 
 			// 2. select x at a time
 			rs = selectNextBatch.executeQuery();
@@ -120,16 +122,17 @@ public class SchemaConversionController
 				l.add(rs.getString(1));
 			}
 			rs.close();
-			log.info("Migrating "+l.size()+" records of "+nrecords);
-			
+			log.info("Migrating " + l.size() + " records of " + nrecords);
+
 			for (String id : l)
 			{
-				
+
 				markNextBatch.clearParameters();
 				markNextBatch.setString(1, id);
 				if (markNextBatch.executeUpdate() != 1)
 				{
-					log.warn("Failed to mark id [" + id + "][" +id.length()+"] for processing ");
+					log.warn("Failed to mark id [" + id + "][" + id.length()
+							+ "] for processing ");
 				}
 			}
 
@@ -167,9 +170,9 @@ public class SchemaConversionController
 						result = convert.getValidateSource(id, rs);
 					}
 					rs.close();
-					
+
 					convert.validate(id, source, result);
-					
+
 				}
 				completeNextBatch.clearParameters();
 				completeNextBatch.setString(1, id);
@@ -191,17 +194,18 @@ public class SchemaConversionController
 		}
 		catch (Exception e)
 		{
-			log.error("Failed to perform migration ",e);
+			log.error("Failed to perform migration ", e);
 			try
 			{
 				connection.rollback();
-				log.error("Rollback Sucessfull ",e);
+				log.error("Rollback Sucessfull ", e);
 			}
 			catch (Exception ex)
 			{
-				log.error("Rollback Failed ",e);
+				log.error("Rollback Failed ", e);
 			}
-			throw new SchemaConversionException("Schema Conversion has been aborted due to earlier errors, please investigate ");
+			throw new SchemaConversionException(
+					"Schema Conversion has been aborted due to earlier errors, please investigate ");
 
 		}
 		finally
@@ -280,7 +284,8 @@ public class SchemaConversionController
 	/**
 	 * @throws SQLException
 	 */
-	private void dropRegisterTable(Connection connection, SchemaConversionHandler convert, SchemaConversionDriver driver)
+	private void dropRegisterTable(Connection connection,
+			SchemaConversionHandler convert, SchemaConversionDriver driver)
 			throws SQLException
 	{
 		Statement stmt = null;
@@ -302,22 +307,23 @@ public class SchemaConversionController
 			}
 		}
 	}
-	
-	private void addColumns(Connection connection, SchemaConversionHandler convert, SchemaConversionDriver driver) throws SQLException
+
+	private void addColumns(Connection connection, SchemaConversionHandler convert,
+			SchemaConversionDriver driver) throws SQLException
 	{
 		String[] names = driver.getNewColumnNames();
 		String[] types = driver.getNewColumnTypes();
 		String[] qualifiers = driver.getNewColumnQualifiers();
-		
-		if(names == null)
+
+		if (names == null)
 		{
 			// do nothing
 		}
 		else
 		{
-			for(int i = 0; i < names.length; i++)
+			for (int i = 0; i < names.length; i++)
 			{
-				if(names[i] == null || names[i].trim().equals(""))
+				if (names[i] == null || names[i].trim().equals(""))
 				{
 					continue;
 				}
@@ -328,7 +334,7 @@ public class SchemaConversionController
 					stmt = connection.createStatement();
 					String sql = driver.getTestNewColumn(names[i]);
 					rs = stmt.executeQuery(sql);
-					if(!rs.next())
+					if (!rs.next())
 					{
 						stmt = connection.createStatement();
 						sql = driver.getAddNewColumn(names[i], types[i], qualifiers[i]);
@@ -360,7 +366,8 @@ public class SchemaConversionController
 	 * @throws SQLException
 	 */
 	private void createRegisterTable(Connection connection,
-			SchemaConversionHandler convert, SchemaConversionDriver driver) throws SQLException
+			SchemaConversionHandler convert, SchemaConversionDriver driver)
+			throws SQLException
 	{
 		Statement stmt = null;
 		ResultSet rs = null;
@@ -398,7 +405,7 @@ public class SchemaConversionController
 				String sql = driver.getPopulateMigrateTable();
 				stmt.executeUpdate(sql);
 			}
-			
+
 			try
 			{
 				// select count(*) from content_migrate;
