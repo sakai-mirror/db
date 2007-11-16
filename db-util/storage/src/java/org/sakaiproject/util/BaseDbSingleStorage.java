@@ -159,21 +159,33 @@ public class BaseDbSingleStorage
 	{
 		try
 		{
-			// read the xml
-			Document doc = Xml.readDocumentFromString(xml);
-
-			// verify the root element
-			Element root = doc.getDocumentElement();
-			if (!root.getTagName().equals(m_resourceEntryTagName))
+			if (m_user instanceof SAXEntityReader)
 			{
-				M_log.warn("readResource(): not = " + m_resourceEntryTagName + " : " + root.getTagName());
-				return null;
+				SAXEntityReader sm_user = (SAXEntityReader) m_user;
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user
+						.getServices());
+				Xml.processString(xml, deh);
+				return deh.getEntity();
 			}
+			else
+			{
+				// read the xml
+				Document doc = Xml.readDocumentFromString(xml);
 
-			// re-create a resource
-			Entity entry = m_user.newResource(null, root);
+				// verify the root element
+				Element root = doc.getDocumentElement();
+				if (!root.getTagName().equals(m_resourceEntryTagName))
+				{
+					M_log.warn("readResource(): not = " + m_resourceEntryTagName + " : "
+							+ root.getTagName());
+					return null;
+				}
 
-			return entry;
+				// re-create a resource
+				Entity entry = m_user.newResource(null, root);
+
+				return entry;
+			}
 		}
 		catch (Exception e)
 		{
