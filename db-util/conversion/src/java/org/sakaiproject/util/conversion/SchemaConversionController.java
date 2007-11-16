@@ -293,8 +293,32 @@ public class SchemaConversionController
 		try
 		{
 			stmt = connection.createStatement();
-			String sql = driver.getDropMigrateTable();
-			stmt.execute(sql);
+			String[] sql = driver.getDropMigrateTable();
+			if(sql == null)
+			{
+				log.info("No SQL provided to drop register table");											
+			}
+			else
+			{
+				for(String statement : sql)
+				{
+					if(statement == null || statement.trim().equals(""))
+					{
+						log.info("Encountered null SQL while dropping register table: " + statement);						
+					}
+					else
+					{
+						try
+						{
+							stmt.execute(statement);
+						}
+						catch(Exception e)
+						{
+							log.info("Unable to execute SQL while dropping register table: " + statement);
+						}
+					}
+				}
+			}
 		}
 		finally
 		{
@@ -387,8 +411,33 @@ public class SchemaConversionController
 			}
 			catch (SQLException sqle)
 			{
-				String sql = driver.getCreateMigrateTable();
-				stmt.execute(sql);
+				String[] sql = driver.getCreateMigrateTable();
+				if(sql == null)
+				{
+					log.info("No SQL provided to create  register table");											
+				}
+				else
+				{
+					for(String statement : sql)
+					{
+						if(statement == null || statement.trim().equals(""))
+						{
+							log.info("Encountered null SQL while creating register table: " + statement);						
+						}
+						else
+						{
+							try
+							{
+								stmt.execute(statement);
+								log.info("Created register table: " + statement);
+							}
+							catch(Exception e)
+							{
+								log.info("Unable to execute SQL while creating register table: " + statement);
+							}
+						}
+					}
+				}
 			}
 			finally
 			{
