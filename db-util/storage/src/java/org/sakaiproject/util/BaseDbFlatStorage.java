@@ -3,25 +3,24 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
 
 package org.sakaiproject.util;
 
-// import
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,6 +28,7 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -57,7 +57,8 @@ import org.sakaiproject.time.cover.TimeService;
  * <li> a resource's id cannot change</li>
  * </ul>
  * <br />
- * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL statement text; <br />
+ * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL
+ * statement text; <br />
  * rather, Unicode values should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
@@ -90,7 +91,10 @@ public class BaseDbFlatStorage
 	/** The full set of fields in the table for insert - just field (not counting a dbid field). */
 	protected String[] m_resourceTableInsertFields = null;
 
-	/** The full set of value expressions for an insert - either null or ? or an expression - to match m_resourceTableInsertFields (not counting a dbid field). */
+	/**
+	 * The full set of value expressions for an insert - either null or ? or an expression - to match m_resourceTableInsertFields (not counting a dbid
+	 * field).
+	 */
 	protected String[] m_resourceTableInsertValues = null;
 
 	/** The extra db field for an integer 'db' id - auto-written on insert only. */
@@ -114,6 +118,37 @@ public class BaseDbFlatStorage
 	/** SqlReader to use when reading the record. */
 	protected SqlReader m_reader = null;
 
+	/** contains a map of the database dependent handlers. */
+	protected static Map<String, FlatStorageSql> databaseBeans;
+
+	/** The db handler we are using. */
+	protected FlatStorageSql flatStorageSql;
+
+	public void setDatabaseBeans(Map databaseBeans)
+	{
+		this.databaseBeans = databaseBeans;
+	}
+
+	/**
+	 * sets which bean containing database dependent code should be used depending on the database vendor.
+	 */
+	public void setFlatStorageSql(String vendor)
+	{
+		this.flatStorageSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+	}
+
+	// since spring is not used and this class is instatiated directly, we need to "inject" these values ourselves
+	static
+	{
+		databaseBeans = new Hashtable<String, FlatStorageSql>();
+		databaseBeans.put("db2", new FlatStorageSqlDb2());
+		databaseBeans.put("default", new FlatStorageSqlDefault());
+		databaseBeans.put("hsql", new FlatStorageSqlHSql());
+		databaseBeans.put("mssql", new FlatStorageSqlMsSql());
+		databaseBeans.put("mysql", new FlatStorageSqlMySql());
+		databaseBeans.put("oracle", new FlatStorageSqlOracle());
+	}
+
 	/**
 	 * Construct.
 	 * 
@@ -132,8 +167,8 @@ public class BaseDbFlatStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbFlatStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableFields,
-			String propertyTableName, boolean locksInTable, SqlReader reader, SqlService sqlService)
+	public BaseDbFlatStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableFields, String propertyTableName,
+			boolean locksInTable, SqlReader reader, SqlService sqlService)
 	{
 		m_resourceTableName = resourceTableName;
 		m_resourceTableIdField = resourceTableIdField;
@@ -147,6 +182,8 @@ public class BaseDbFlatStorage
 		m_resourceTableUpdateFields = resourceTableFields;
 		m_resourceTableInsertFields = resourceTableFields;
 		m_resourceTableInsertValues = resourceTableFields;
+
+		setFlatStorageSql(m_sql.getVendor());
 	}
 
 	/**
@@ -230,9 +267,7 @@ public class BaseDbFlatStorage
 	public boolean checkResource(String id)
 	{
 		// just see if the record exists
-		String sql = "select " + m_resourceTableIdField + " from " + m_resourceTableName + " where ( " + m_resourceTableIdField
-				+ " = ? )";
-
+		String sql = flatStorageSql.getSelectFieldSql(m_resourceTableName, m_resourceTableIdField);
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
 		List ids = m_sql.dbRead(sql, fields, null);
@@ -266,9 +301,7 @@ public class BaseDbFlatStorage
 		Entity entry = null;
 
 		// get the user from the db
-		String sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName + " where ( "
-				+ m_resourceTableIdField + " = ? )";
-
+		String sql = flatStorageSql.getSelectFieldsSql(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField);
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
 		List rv = m_sql.dbRead(conn, sql, fields, m_reader);
@@ -284,8 +317,7 @@ public class BaseDbFlatStorage
 	public List getAllResources()
 	{
 		// read all resources from the db
-		String sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName;
-
+		String sql = flatStorageSql.getSelectFieldsSql(m_resourceTableName, fieldList(m_resourceTableReadFields, null));
 		List rv = m_sql.dbRead(sql, null, m_reader);
 
 		return rv;
@@ -296,8 +328,7 @@ public class BaseDbFlatStorage
 		List all = new Vector();
 
 		// read all count
-		String sql = "select count(1) from " + m_resourceTableName;
-
+		String sql = flatStorageSql.getSelectCountSql(m_resourceTableName);
 		List results = m_sql.dbRead(sql, null, new SqlReader()
 		{
 			public Object readSqlResultRecord(ResultSet result)
@@ -326,35 +357,26 @@ public class BaseDbFlatStorage
 		if ("oracle".equals(m_sql.getVendor()))
 		{
 			// use Oracle RANK function, adding the id to the sort fields to assure we have a unique ranking
-			sql = "select " + /* fieldList(m_resourceTableReadFields, null) */"*" + " from" + " (select "
-					+ fieldList(m_resourceTableReadFields, null) + " ,RANK() OVER" + " (order by " + m_resourceTableName + "."
-					+ m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2) + ","
-					+ m_resourceTableName + "." + m_resourceTableIdField + ") as rank" + " from " + m_resourceTableName
-					+ " order by " + m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2) + ","
-					+ m_resourceTableName + "." + m_resourceTableIdField + " )" + " where rank between ? and ?";
-			fields = new Object[2];
-			fields[0] = new Long(first);
-			fields[1] = new Long(last);
+			sql = flatStorageSql.getSelectFieldsSql1(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1));
+			fields = flatStorageSql.getSelectFieldsFields(first, last);
 		}
-		else if ("mysql".equals(m_sql.getVendor()))
+		else if ("mssql".equals(m_sql.getVendor()) || "db2".equals(m_sql.getVendor()))
 		{
-			// use MySQL LIMIT clause
-			sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName + " order by "
-					+ m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2)
-					+ " limit " + (last - first + 1) + " offset " + (first - 1);
+			sql = flatStorageSql.getSelectFieldsSql1(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, 0, 0);
+			String realTablename = m_resourceTableName;
+			m_resourceTableName = "TEMP_QUERY";
+			sql += flatStorageSql.getSelectFieldsSql2(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, 0, 0);
+			m_resourceTableName = realTablename;
+			fields = flatStorageSql.getSelectFieldsFields(first, last);
 		}
 		else
-		// if ("hsqldb".equals(m_sql.getVendor()))
 		{
-			// use SQL2000 clause
-			sql = "select " + "limit " + (first - 1) + " " + (last - first + 1) + " " + fieldList(m_resourceTableReadFields, null)
-					+ " from " + m_resourceTableName + " order by " + m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2);
+			sql = flatStorageSql.getSelectFieldsSql1(m_resourceTableName, fieldList(m_resourceTableReadFields, null), null,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1));
 		}
-
 		List rv = m_sql.dbRead(sql, fields, m_reader);
 
 		return rv;
@@ -413,8 +435,8 @@ public class BaseDbFlatStorage
 		if (where == null) where = "";
 
 		// read all resources from the db with a where
-		String sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName
-				+ ((join == null) ? "" : ("," + join)) + ((where.length() > 0) ? (" where " + where) : "") + " order by " + order;
+		String sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName + ((join == null) ? "" : ("," + join))
+				+ ((where.length() > 0) ? (" where " + where) : "") + " order by " + order;
 
 		List all = m_sql.dbRead(sql, values, m_reader);
 
@@ -449,9 +471,7 @@ public class BaseDbFlatStorage
 	public int countSelectedResources(String where, Object[] values, String join)
 	{
 		// read all resources from the db with a where
-		String sql = "select count(1) from " + m_resourceTableName + ((join == null) ? "" : ("," + join))
-				+ (((where != null) && (where.length() > 0)) ? (" where " + where) : "");
-
+		String sql = flatStorageSql.getSelectCount2Sql(m_resourceTableName, join, where);
 		List results = m_sql.dbRead(sql, values, new SqlReader()
 		{
 			public Object readSqlResultRecord(ResultSet result)
@@ -523,8 +543,7 @@ public class BaseDbFlatStorage
 
 		if (order == null)
 		{
-			order = m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2);
+			order = flatStorageSql.getOrder(m_resourceTableName, m_resourceTableSortField1, m_resourceTableSortField2);
 		}
 
 		if ("oracle".equals(m_sql.getVendor()))
@@ -538,39 +557,39 @@ public class BaseDbFlatStorage
 			{
 				fields = new Object[2];
 			}
-
-			// use Oracle RANK function, adding the id field to the order to assure a unique ranking
-			sql = "select " + /* fieldList(m_resourceTableReadFields, null) */"*" + " from" + " (select "
-					+ fieldList(m_resourceTableReadFields, null) + " ,RANK() OVER" + " (order by " + order + ","
-					+ m_resourceTableName + "." + m_resourceTableIdField + ") as rank" + " from " + m_resourceTableName
-					+ ((join == null) ? "" : ("," + join)) + (((where != null) && (where.length() > 0)) ? (" where " + where) : "")
-					+ " order by " + order + "," + m_resourceTableName + "." + m_resourceTableIdField + " )"
-					+ " where rank between ? and ?";
+			sql = flatStorageSql.getSelectFieldsSql3(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
 			fields[fields.length - 2] = new Long(first);
 			fields[fields.length - 1] = new Long(last);
 		}
-		else if ("mysql".equals(m_sql.getVendor()))
+		else if ("mssql".equals(m_sql.getVendor()) || "db2".equals(m_sql.getVendor()))
 		{
-			fields = values;
-			// use MySQL LIMIT clause
-			sql = "select " + fieldList(m_resourceTableReadFields, null) + " from " + m_resourceTableName
-					+ ((join == null) ? "" : ("," + join)) + (((where != null) && (where.length() > 0)) ? (" where " + where) : "")
-					+ " order by " + order + "," + m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2)
-					+ " limit " + (last - first + 1) + " offset " + (first - 1);
+			if (values != null)
+			{
+				fields = new Object[2 + values.length];
+				System.arraycopy(values, 0, fields, 0, values.length);
+			}
+			else
+			{
+				fields = new Object[2];
+			}
+
+			sql = flatStorageSql.getSelectFieldsSql3(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
+			String realTablename = m_resourceTableName;
+			m_resourceTableName = "TEMP_QUERY";
+			sql += flatStorageSql.getSelectFieldsSql4(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
+			fields[fields.length - 2] = new Long(first);
+			fields[fields.length - 1] = new Long(last);
+			m_resourceTableName = realTablename;
 		}
 		else
-		// if ("hsqldb".equals(m_sql.getVendor()))
 		{
-			// use SQL2000 LIMIT clause
+			sql = flatStorageSql.getSelectFieldsSql3(m_resourceTableName, fieldList(m_resourceTableReadFields, null), null,
+					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
 			fields = values;
-			sql = "select " + "limit " + (first - 1) + " " + (last - first + 1) + " " + fieldList(m_resourceTableReadFields, null)
-					+ " from " + m_resourceTableName + ((join == null) ? "" : ("," + join))
-					+ (((where != null) && (where.length() > 0)) ? (" where " + where) : "") + " order by " + order + ","
-					+ m_resourceTableName + "." + m_resourceTableSortField1
-					+ (m_resourceTableSortField2 == null ? "" : "," + m_resourceTableName + "." + m_resourceTableSortField2);
 		}
-
 		List rv = m_sql.dbRead(sql, fields, m_reader);
 
 		return rv;
@@ -631,14 +650,60 @@ public class BaseDbFlatStorage
 	 */
 	public boolean insertResource(String id, Object[] fields, Connection conn)
 	{
-		String statement = "insert into " + m_resourceTableName + "( "
-				+ fieldList(m_resourceTableInsertFields, m_resourceTableDbidField) + " )" + " values ( "
-				+ valuesParams(m_resourceTableInsertValues, (m_resourceTableDbidField)) + " )";
+		// for MSSQL, look at m_resourceTableInsertValues, and if any start with '(',
+		// we need to process and store results since MSSQL doesn't support selects in the VALUES clause
+		// bind values come from 'fields' array
+		// store results in fieldOverrides
+
+		// will be a copy of table's insert values, with overrides as necessary
+		String[] overrideTableInsertValues = new String[m_resourceTableInsertValues.length];
+
+		Object[] fieldOverrides = new Object[m_resourceTableInsertValues.length];
+
+		for (int i = 0; i < m_resourceTableInsertValues.length; i++)
+		{
+			if ("mssql".equals(m_sql.getVendor()) && m_resourceTableInsertValues[i].startsWith("("))
+			{
+				String sql = m_resourceTableInsertValues[i];
+				List result = null;
+				if (sql.indexOf("?") < 0)
+				{ // if there are no parms in sql stmt, do read directly
+					result = m_sql.dbRead(sql);
+				}
+				else
+				{
+					Object[] bindValue = new Object[1];
+					bindValue[0] = fields[i];
+					result = m_sql.dbRead(conn, sql, bindValue, null);
+				}
+				if (result.size() > 0)
+				{
+					fieldOverrides[i] = result.get(0);
+				}
+				else
+				{
+					fieldOverrides[i] = "";
+				}
+			}
+			else
+			{
+				fieldOverrides[i] = fields[i];
+			}
+			if ("mssql".equals(m_sql.getVendor()))
+			{
+				overrideTableInsertValues[i] = "?";
+			}
+			else
+			{
+				overrideTableInsertValues[i] = m_resourceTableInsertValues[i];
+			}
+		}
+		String statement = "insert into " + m_resourceTableName + "( " + fieldList(m_resourceTableInsertFields, m_resourceTableDbidField) + " )"
+				+ " values ( " + valuesParams(overrideTableInsertValues, (m_resourceTableDbidField)) + " )";
 
 		// process the insert
 		boolean ok = m_sql.dbWrite(conn, statement, fields);
 		return ok;
-
 	} // putResource
 
 	/**
@@ -679,8 +744,7 @@ public class BaseDbFlatStorage
 			if (entry == null) return null;
 
 			// write a lock to the lock table - if we can do it, we get the lock
-			String statement = "insert into SAKAI_LOCKS" + " (TABLE_NAME,RECORD_ID,LOCK_TIME,USAGE_SESSION_ID)"
-					+ " values (?, ?, ?, ?)";
+			String statement = flatStorageSql.getInsertLockSql();
 
 			// we need session id and user id
 			String sessionId = UsageSessionService.getSessionId();
@@ -759,9 +823,7 @@ public class BaseDbFlatStorage
 		// write out the properties
 		writeProperties(edit, props, key);
 
-		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableUpdateFields) + " where ( "
-				+ m_resourceTableIdField + " = ? )";
-
+		String statement = flatStorageSql.getUpdateSql(m_resourceTableName, updateSet(m_resourceTableUpdateFields), m_resourceTableIdField);
 		// process the update
 		m_sql.dbWrite(statement, updateFields(fields));
 
@@ -770,7 +832,7 @@ public class BaseDbFlatStorage
 			if (m_locksAreInTable)
 			{
 				// remove the lock
-				statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+				statement = flatStorageSql.getDeleteLockSql();
 
 				// collect the fields
 				Object lockFields[] = new Object[2];
@@ -782,7 +844,6 @@ public class BaseDbFlatStorage
 					M_log.warn("commit: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 				}
 			}
-
 			else
 			{
 				// remove the lock
@@ -804,7 +865,7 @@ public class BaseDbFlatStorage
 			if (m_locksAreInTable)
 			{
 				// remove the lock
-				String statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+				String statement = flatStorageSql.getDeleteLockSql();
 
 				// collect the fields
 				Object lockFields[] = new Object[2];
@@ -816,7 +877,6 @@ public class BaseDbFlatStorage
 					M_log.warn("cancel: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 				}
 			}
-
 			else
 			{
 				// release the lock
@@ -855,7 +915,7 @@ public class BaseDbFlatStorage
 			}
 		}, "removeResource:" + edit.getId());
 	}
-	
+
 	/**
 	 * Transaction code to remove a resource.
 	 */
@@ -865,8 +925,7 @@ public class BaseDbFlatStorage
 		deleteProperties(edit, key);
 
 		// form the SQL delete statement
-		String statement = "delete from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
-
+		String statement = flatStorageSql.getDeleteSql(m_resourceTableName, m_resourceTableIdField);
 		Object fields[] = new Object[1];
 		fields[0] = caseId(edit.getId());
 
@@ -878,7 +937,7 @@ public class BaseDbFlatStorage
 			if (m_locksAreInTable)
 			{
 				// remove the lock
-				statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+				statement = flatStorageSql.getDeleteLockSql();
 
 				// collect the fields
 				Object lockFields[] = new Object[2];
@@ -967,8 +1026,7 @@ public class BaseDbFlatStorage
 
 		// get the properties from the db
 		// ASSUME: NAME, VALUE for fields
-		String sql = "select NAME, VALUE from " + table + " where ( " + idField + " = ? )";
-
+		String sql = flatStorageSql.getSelectNameValueSql(table, idField);
 		Object fields[] = new Object[1];
 		fields[0] = id;
 		m_sql.dbRead(conn, sql, fields, new SqlReader()
@@ -1015,8 +1073,7 @@ public class BaseDbFlatStorage
 
 		// get the properties from the db
 		// ASSUME: NAME, VALUE for fields
-		String sql = "select NAME, VALUE from " + table + " where ( " + idField + " = ? )";
-
+		String sql = flatStorageSql.getSelectNameValueSql(table, idField);
 		Object fields[] = new Object[1];
 		fields[0] = id;
 		m_sql.dbRead(conn, sql, fields, new SqlReader()
@@ -1086,8 +1143,7 @@ public class BaseDbFlatStorage
 		}
 	}
 
-	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
-			ResourceProperties props)
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId, ResourceProperties props)
 	{
 		boolean deleteFirst = true;
 		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
@@ -1113,7 +1169,7 @@ public class BaseDbFlatStorage
 			{
 				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
-		}, "writeProperties:"+id);
+		}, "writeProperties:" + id);
 	}
 
 	/**
@@ -1122,8 +1178,8 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
-			ResourceProperties props, boolean deleteFirst)
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId, ResourceProperties props,
+			boolean deleteFirst)
 	{
 		String statement;
 		Object fields[];
@@ -1132,8 +1188,7 @@ public class BaseDbFlatStorage
 		if (deleteFirst)
 		{
 			// delete what's there
-			statement = "delete from " + table + " where ( " + idField + " = ? )";
-
+			statement = flatStorageSql.getDeleteSql(table, idField);
 			fields = new Object[1];
 			fields[0] = id;
 
@@ -1142,10 +1197,7 @@ public class BaseDbFlatStorage
 		}
 
 		// the SQL statement
-		statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
-				+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
-				+ ((extraIdField != null) ? ",?" : "") + ")";
-
+		statement = flatStorageSql.getInsertSql(table, idField, extraIdField);
 		fields = new Object[((extraIdField != null) ? 4 : 3)];
 		fields[0] = id;
 
@@ -1177,8 +1229,7 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
-			Properties props)
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId, Properties props)
 	{
 		boolean deleteFirst = true;
 		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
@@ -1204,7 +1255,7 @@ public class BaseDbFlatStorage
 			{
 				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
-		}, "writeProperties:"+id);
+		}, "writeProperties:" + id);
 
 	}
 
@@ -1214,8 +1265,8 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
-			Properties props, boolean deleteFirst)
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId, Properties props,
+			boolean deleteFirst)
 	{
 		String statement;
 		Object[] fields;
@@ -1223,8 +1274,7 @@ public class BaseDbFlatStorage
 		if (deleteFirst)
 		{
 			// delete what's there
-			statement = "delete from " + table + " where ( " + idField + " = ? )";
-
+			statement = flatStorageSql.getDeleteSql(table, idField);
 			fields = new Object[1];
 			fields[0] = id;
 
@@ -1233,10 +1283,7 @@ public class BaseDbFlatStorage
 		}
 
 		// the SQL statement
-		statement = "insert into " + table + "( " + idField + ", NAME, VALUE"
-				+ ((extraIdField != null) ? (", " + extraIdField) : "") + " ) values (?,?,?"
-				+ ((extraIdField != null) ? ",?" : "") + ")";
-
+		statement = flatStorageSql.getInsertSql(table, idField, extraIdField);
 		fields = new Object[((extraIdField != null) ? 4 : 3)];
 		fields[0] = id;
 
@@ -1280,8 +1327,7 @@ public class BaseDbFlatStorage
 		if (m_resourcePropertyTableName == null) return;
 
 		// form the SQL delete statement
-		String statement = "delete from " + m_resourcePropertyTableName + " where ( " + idField + " = ? )";
-
+		String statement = flatStorageSql.getDeleteSql(m_resourcePropertyTableName, idField);
 		Object fields[] = new Object[1];
 		fields[0] = key == null ? caseId(r.getId()) : key;
 
@@ -1290,7 +1336,8 @@ public class BaseDbFlatStorage
 	}
 
 	/**
-	 * Form a string of n question marks with commas, for sql value statements, one for each item in the values array, or an empty string if null. If the fields are "(...)" values, use these instead of ?.
+	 * Form a string of n question marks with commas, for sql value statements, one for each item in the values array, or an empty string if null. If
+	 * the fields are "(...)" values, use these instead of ?.
 	 * 
 	 * @param values
 	 *        The values to be inserted into the sql statement.
@@ -1298,7 +1345,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String valuesParams(String[] fields, String dbidField)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length - 1; i++)
 		{
 			if (fields[i].startsWith("("))
@@ -1322,28 +1369,7 @@ public class BaseDbFlatStorage
 			buf.append("?");
 		}
 
-		if (dbidField != null)
-		{
-			if ("oracle".equals(m_sql.getVendor()))
-			{
-				// insert the sequence next value based on the table name value for a dbid field
-				buf.append(",");
-				buf.append(m_resourceTableName);
-				buf.append("_SEQ.NEXTVAL");
-			}
-			else if ("mysql".equals(m_sql.getVendor()))
-			{
-				// for mysql, the field will auto increment as part of the schema...
-			}
-			else
-			// if ("hsqldb".equals(m_sql.getVendor()))
-			{
-				// insert the sequence next value based on the table name value for a dbid field
-				buf.append(", NEXT VALUE FOR ");
-				buf.append(m_resourceTableName);
-				buf.append("_SEQ");
-			}
-		}
+		if (dbidField != null) buf.append(flatStorageSql.getIdField(m_resourceTableName));
 
 		return buf.toString();
 	}
@@ -1357,7 +1383,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String updateSet(String[] fields)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 
 		// we assume the first field is the primary key, and we don't want to include that in the update, so start at 1
 		for (int i = 1; i < fields.length; i++)
@@ -1405,7 +1431,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String fieldList(String[] fields, String dbidField)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 
 		for (int i = 0; i < fields.length - 1; i++)
 		{
@@ -1416,18 +1442,17 @@ public class BaseDbFlatStorage
 
 		if (dbidField != null)
 		{
-			if (!"mysql".equals(m_sql.getVendor()))
+			if (!"mysql".equals(m_sql.getVendor()) && !"mssql".equals(m_sql.getVendor()))
 			{
-				// MySQL doesn't need this field, but Oracle and HSQLDB do
+				// MySQL and ms sql server don't need this field, but oracle and HSQLDB do
 				buf.append("," + qualifyField(dbidField, m_resourceTableName));
 			}
 		}
-
 		return buf.toString();
 	}
 
 	/**
-	 * Qualify the fiel with the table name, if it's a field.
+	 * Qualify the field with the table name, if it's a field.
 	 * 
 	 * @param field
 	 *        The field.
@@ -1442,7 +1467,6 @@ public class BaseDbFlatStorage
 		{
 			return field;
 		}
-
 		else
 		{
 			return table + "." + field;
@@ -1478,22 +1502,14 @@ public class BaseDbFlatStorage
 	}
 
 	/**
-	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
+	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code
+	 * ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
 	 * 
 	 * @param recordId
 	 * @return The record ID to use internally in the database
 	 */
 	private String internalRecordId(String recordId)
 	{
-		if ("mysql".equals(m_sql.getVendor()))
-		{
-			if (recordId == null) recordId = "null";
-			return recordId.hashCode() + " - " + recordId;
-		}
-		else
-		// oracle, hsqldb
-		{
-			return recordId;
-		}
+		return flatStorageSql.getRecordId(recordId);
 	}
 }

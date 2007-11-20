@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>master</artifactId>
+    <artifactId>base</artifactId>
     <groupId>org.sakaiproject</groupId>
     <version>M2</version>
-    <relativePath>../master/pom.xml</relativePath>
+    <relativePath>../pom.xml</relativePath>
   </parent>
   <name>Sakai DB Project</name>
   <groupId>org.sakaiproject</groupId>
@@ -17,6 +17,7 @@
     <module>db-impl/impl</module>
     <module>db-impl/pack</module>
     <module>db-util/storage</module>
+    <module>db-util/conversion</module>
     <module>db-shared-deploy</module>
   </modules>
 </project>

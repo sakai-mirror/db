@@ -3,18 +3,18 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2005, 2006 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ * Copyright (c) 2005, 2006, 2007 The Sakai Foundation.
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -60,7 +61,8 @@ import org.w3c.dom.Element;
  * </ul>
  * </p>
  * <br />
- * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL statement text; <br />
+ * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL
+ * statement text; <br />
  * rather, Unicode values should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
@@ -115,15 +117,47 @@ public class BaseDbDoubleStorage
 	protected StorageUser m_user = null;
 
 	/**
-	 * Locks, keyed by reference, holding Connections (or, if locks are done locally, holding an Edit). Note: keying by reference allows botu container and resource locks to be stored, the reference distinguishes them.
+	 * Locks, keyed by reference, holding Connections (or, if locks are done locally, holding an Edit). Note: keying by reference allows botu
+	 * container and resource locks to be stored, the reference distinguishes them.
 	 */
 	protected Hashtable m_locks = null;
 
 	/** For container, the extra field is (no longer used) NEXT_ID */
-	protected static final String[] M_containerExtraFields = { "NEXT_ID" };
+	protected static final String[] M_containerExtraFields = {"NEXT_ID"};
 
 	/** Injected (by constructor) SqlService. */
 	protected SqlService m_sql = null;
+
+	/** contains a map of the database dependent handlers. */
+	protected static Map<String, DoubleStorageSql> databaseBeans;
+
+	/** The db handler we are using. */
+	protected DoubleStorageSql doubleStorageSql;
+
+	public void setDatabaseBeans(Map databaseBeans)
+	{
+		this.databaseBeans = databaseBeans;
+	}
+
+	/**
+	 * sets which bean containing database dependent code should be used depending on the database vendor.
+	 */
+	public void setDoubleStorageSql(String vendor)
+	{
+		this.doubleStorageSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+	}
+
+	// since spring is not used and this class is instatiated directly, we need to "inject" these values ourselves
+	static
+	{
+		databaseBeans = new Hashtable<String, DoubleStorageSql>();
+		databaseBeans.put("db2", new DoubleStorageSqlDb2());
+		databaseBeans.put("default", new DoubleStorageSqlDefault());
+		databaseBeans.put("hsql", new DoubleStorageSqlHSql());
+		databaseBeans.put("mssql", new DoubleStorageSqlMsSql());
+		databaseBeans.put("mysql", new DoubleStorageSqlMySql());
+		databaseBeans.put("oracle", new DoubleStorageSqlOracle());
+	}
 
 	/**
 	 * Construct.
@@ -153,11 +187,10 @@ public class BaseDbDoubleStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbDoubleStorage(String containerTableName, String containerTableIdField, String resourceTableName,
-			String resourceTableIdField, String resourceTableContainerIdField, String resourceTableOrderField,
-			String resourceTableOwnerField, String resourceTableDraftField, String resourceTablePubViewField,
-			String[] resourceTableOtherFields, boolean locksInDb, String containerEntryName, String resourceEntryName,
-			StorageUser user, SqlService sqlService)
+	public BaseDbDoubleStorage(String containerTableName, String containerTableIdField, String resourceTableName, String resourceTableIdField,
+			String resourceTableContainerIdField, String resourceTableOrderField, String resourceTableOwnerField, String resourceTableDraftField,
+			String resourceTablePubViewField, String[] resourceTableOtherFields, boolean locksInDb, String containerEntryName,
+			String resourceEntryName, StorageUser user, SqlService sqlService)
 	{
 		m_containerTableName = containerTableName;
 		m_containerTableIdField = containerTableIdField;
@@ -174,6 +207,8 @@ public class BaseDbDoubleStorage
 		m_resourceTablePubViewField = resourceTablePubViewField;
 		m_user = user;
 		m_sql = sqlService;
+
+		setDoubleStorageSql(m_sql.getVendor());
 	}
 
 	/**
@@ -210,25 +245,35 @@ public class BaseDbDoubleStorage
 	{
 		try
 		{
-			// read the xml
-			Document doc = Xml.readDocumentFromString(xml);
+			if ( m_user instanceof SAXEntityReader ) {
+				SAXEntityReader sm_user = (SAXEntityReader) m_user;
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
+				Xml.processString(xml, deh);
+				return deh.getEntity();
+			} else {
+				// read the xml
+				Document doc = Xml.readDocumentFromString(xml);
+	
+				// verify the root element
+				Element root = doc.getDocumentElement();
+				if (!root.getTagName().equals(m_containerEntryTagName))
+				{
+					M_log.warn("readContainer(): not = " + m_containerEntryTagName + " : " + root.getTagName());
+					return null;
+				}
+	
+				// re-create a resource
+				Entity entry = m_user.newContainer(root);
+				return entry;
+				
+			} 
+			
 
-			// verify the root element
-			Element root = doc.getDocumentElement();
-			if (!root.getTagName().equals(m_containerEntryTagName))
-			{
-				M_log.warn("readContainer(): not = " + m_containerEntryTagName + " : " + root.getTagName());
-				return null;
-			}
-
-			// re-create a resource
-			Entity entry = m_user.newContainer(root);
-
-			return entry;
 		}
 		catch (Exception e)
 		{
-			M_log.debug("readContainer(): ", e);
+			M_log.warn("readContainer(): "+e.getMessage());
+			M_log.info("readContainer(): ", e);
 			return null;
 		}
 	}
@@ -243,8 +288,7 @@ public class BaseDbDoubleStorage
 	public boolean checkContainer(String ref)
 	{
 		// just see if the record exists
-		String sql = "select " + m_containerTableIdField + "  from " + m_containerTableName + " where ( " + m_containerTableIdField
-				+ " = ? )";
+		String sql = doubleStorageSql.getSelect1Sql(m_containerTableName, m_containerTableIdField);
 		Object[] fields = new Object[1];
 		fields[0] = ref;
 		List ids = m_sql.dbRead(sql, fields, null);
@@ -263,7 +307,7 @@ public class BaseDbDoubleStorage
 		Entity entry = null;
 
 		// get the user from the db
-		String sql = "select XML from " + m_containerTableName + " where ( " + m_containerTableIdField + " = ? )";
+		String sql = doubleStorageSql.getSelectXml2Sql(m_containerTableName, m_containerTableIdField);
 		Object[] fields = new Object[1];
 		fields[0] = ref;
 
@@ -287,7 +331,7 @@ public class BaseDbDoubleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_containerTableName;
+		String sql = doubleStorageSql.getSelectXml1Sql(m_containerTableName);
 		// %%% order by...
 		List xml = m_sql.dbRead(sql);
 
@@ -321,10 +365,8 @@ public class BaseDbDoubleStorage
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
 
-		String statement = "insert into " + m_containerTableName
-				+ insertFields(m_containerTableIdField, null, M_containerExtraFields, "XML") + " values ( ? " + ",'0'" // %%% was next id, no longer used (but still in db) -ggolden
-				+ ", ? )";
-
+		String statement = doubleStorageSql.getInsertSql(m_containerTableName, insertFields(m_containerTableIdField, null, M_containerExtraFields,
+				"XML"));
 		Object[] fields = new Object[2];
 		fields[0] = entry.getReference();
 		fields[1] = xml;
@@ -362,9 +404,8 @@ public class BaseDbDoubleStorage
 			if ("oracle".equals(m_sql.getVendor()))
 			{
 				// read the record and get a lock on it (non blocking)
-				String statement = "select XML from " + m_containerTableName + " where ( " + m_containerTableIdField + " = '"
-						+ Validator.escapeSql(ref) + "' )" + " for update nowait";
-				StringBuffer result = new StringBuffer();
+				String statement = doubleStorageSql.getSelectXml3Sql(m_containerTableName, m_containerTableIdField, Validator.escapeSql(ref));
+				StringBuilder result = new StringBuilder();
 				Connection lock = m_sql.dbReadLock(statement, result);
 
 				// for missing or already locked...
@@ -382,7 +423,6 @@ public class BaseDbDoubleStorage
 				throw new UnsupportedOperationException("Record locking only available when configured with Oracle database");
 			}
 		}
-
 		// if the locks are in a separate table in the db
 		else if (m_locksAreInTable)
 		{
@@ -391,8 +431,7 @@ public class BaseDbDoubleStorage
 			if (entry == null) return null;
 
 			// write a lock to the lock table - if we can do it, we get the lock
-			String statement = "insert into SAKAI_LOCKS" + " (TABLE_NAME,RECORD_ID,LOCK_TIME,USAGE_SESSION_ID)"
-					+ " values (?, ?, ?, ?)";
+			String statement = doubleStorageSql.getInsertSql2();
 
 			// we need session id
 			String sessionId = UsageSessionService.getSessionId();
@@ -404,7 +443,7 @@ public class BaseDbDoubleStorage
 			// collect the fields
 			Object fields[] = new Object[4];
 			fields[0] = m_containerTableName;
-			fields[1] = internalRecordId(ref);
+			fields[1] = doubleStorageSql.getRecordId(ref);
 			fields[2] = TimeService.newTime();
 			fields[3] = sessionId;
 
@@ -439,7 +478,6 @@ public class BaseDbDoubleStorage
 				m_locks.put(entry.getReference(), edit);
 			}
 		}
-
 		return edit;
 	}
 
@@ -455,8 +493,7 @@ public class BaseDbDoubleStorage
 		Document doc = Xml.createDocument();
 		edit.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "update " + m_containerTableName + " set XML = ?" + " where " + m_containerTableIdField + " = ? ";
-
+		String statement = doubleStorageSql.getUpdateSql(m_containerTableName, m_containerTableIdField);
 		Object[] fields = new Object[2];
 		fields[0] = xml;
 		fields[1] = edit.getReference();
@@ -484,12 +521,12 @@ public class BaseDbDoubleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_containerTableName;
-			lockFields[1] = internalRecordId(edit.getReference());
+			lockFields[1] = doubleStorageSql.getRecordId(edit.getReference());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
@@ -535,12 +572,12 @@ public class BaseDbDoubleStorage
 		else if (m_locksAreInTable)
 		{
 			// remove the lock
-			String statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			String statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_containerTableName;
-			lockFields[1] = internalRecordId(edit.getReference());
+			lockFields[1] = doubleStorageSql.getRecordId(edit.getReference());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
@@ -564,7 +601,7 @@ public class BaseDbDoubleStorage
 	public void removeContainer(Edit edit)
 	{
 		// form the SQL delete statement
-		String statement = "delete from " + m_containerTableName + " where " + m_containerTableIdField + " = ? ";
+		String statement = doubleStorageSql.getDeleteSql(m_containerTableName, m_containerTableIdField);
 		Object[] fields = new Object[1];
 		fields[0] = edit.getReference();
 
@@ -591,12 +628,12 @@ public class BaseDbDoubleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_containerTableName;
-			lockFields[1] = internalRecordId(edit.getReference());
+			lockFields[1] = doubleStorageSql.getRecordId(edit.getReference());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
@@ -627,6 +664,13 @@ public class BaseDbDoubleStorage
 	{
 		try
 		{
+			if ( m_user instanceof SAXEntityReader ) {
+				SAXEntityReader sm_user = (SAXEntityReader) m_user;
+				DefaultEntityHandler deh = sm_user.getDefaultHandler(sm_user.getServices());
+				deh.setContainer(container);
+				Xml.processString(xml, deh);
+				return deh.getEntity();
+			} else {
 			// read the xml
 			Document doc = Xml.readDocumentFromString(xml);
 
@@ -642,10 +686,12 @@ public class BaseDbDoubleStorage
 			Entity entry = m_user.newResource(container, root);
 
 			return entry;
+			}
 		}
 		catch (Exception e)
 		{
-			M_log.debug("readResource(): ", e);
+			M_log.warn("readResource(): "+e.getMessage());
+			M_log.info("readResource(): ", e);
 			return null;
 		}
 	}
@@ -662,8 +708,7 @@ public class BaseDbDoubleStorage
 	public boolean checkResource(Entity container, String id)
 	{
 		// just see if the record exists
-		String sql = "select " + m_resourceTableIdField + "  from " + m_resourceTableName + " where ("
-				+ m_resourceTableContainerIdField + " = ? )" + " and ( " + m_resourceTableIdField + " = ? )";
+		String sql = doubleStorageSql.getSelectIdSql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField);
 		Object[] fields = new Object[2];
 		fields[0] = container.getReference();
 		fields[1] = id;
@@ -685,8 +730,7 @@ public class BaseDbDoubleStorage
 		Entity entry = null;
 
 		// get the user from the db
-		String sql = "select XML from " + m_resourceTableName + " where (" + m_resourceTableContainerIdField + " = ? )" + " and ( "
-				+ m_resourceTableIdField + " = ? )";
+		String sql = doubleStorageSql.getSelectXml4Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField);
 		Object[] fields = new Object[2];
 		fields[0] = container.getReference();
 		fields[1] = id;
@@ -712,8 +756,7 @@ public class BaseDbDoubleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " where (" + m_resourceTableContainerIdField + " = ? )"
-				+ ((m_resourceTableOrderField != null) ? (" order by " + m_resourceTableOrderField + " asc") : "");
+		String sql = doubleStorageSql.getSelectXml5Sql(m_resourceTableName, m_resourceTableContainerIdField, m_resourceTableOrderField);
 		Object[] fields = new Object[1];
 		fields[0] = container.getReference();
 		List xml = m_sql.dbRead(sql, fields, null);
@@ -745,9 +788,7 @@ public class BaseDbDoubleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " where (" + m_resourceTableContainerIdField + " = ? )" 
-			+ ((filter != null) ? "and " + filter : "")
-			+ ((m_resourceTableOrderField != null) ? (" order by " + m_resourceTableOrderField + " asc") : "");
+		String sql = doubleStorageSql.getSelectXml5filterSql(m_resourceTableName, m_resourceTableContainerIdField, m_resourceTableOrderField, filter);
 		Object[] fields = new Object[1];
 		fields[0] = container.getReference();
 		List xml = m_sql.dbRead(sql, fields, null);
@@ -786,10 +827,8 @@ public class BaseDbDoubleStorage
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
 
-		String statement = "insert into " + m_resourceTableName
-				+ insertFields(m_containerTableIdField, m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( "
-				+ "?, ?, " + valuesParams(m_resourceTableOtherFields) + " ? )";
-
+		String statement = doubleStorageSql.getInsertSql3(m_resourceTableName, insertFields(m_containerTableIdField, m_resourceTableIdField,
+				m_resourceTableOtherFields, "XML"), valuesParams(m_resourceTableOtherFields));
 		Object[] flds = m_user.storageFields(entry);
 		if (flds == null) flds = new Object[0];
 		Object[] fields = new Object[flds.length + 3];
@@ -833,10 +872,9 @@ public class BaseDbDoubleStorage
 			if ("oracle".equals(m_sql.getVendor()))
 			{
 				// read the record and get a lock on it (non blocking)
-				String statement = "select XML from " + m_resourceTableName + " where (" + m_resourceTableContainerIdField + " ='"
-						+ Validator.escapeSql(container.getReference()) + "' )" + " and ( " + m_resourceTableIdField + " = '"
-						+ Validator.escapeSql(id) + "' )" + " for update nowait";
-				StringBuffer result = new StringBuffer();
+				String statement = doubleStorageSql.getSelectXml6Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField,
+						Validator.escapeSql(id), Validator.escapeSql(container.getReference()));
+				StringBuilder result = new StringBuilder();
 				Connection lock = m_sql.dbReadLock(statement, result);
 
 				// for missing or already locked...
@@ -863,8 +901,7 @@ public class BaseDbDoubleStorage
 			if (entry == null) return null;
 
 			// write a lock to the lock table - if we can do it, we get the lock
-			String statement = "insert into SAKAI_LOCKS" + " (TABLE_NAME,RECORD_ID,LOCK_TIME,USAGE_SESSION_ID)"
-					+ " values (?, ?, ?, ?)";
+			String statement = doubleStorageSql.getInsertSql2();
 
 			// we need session id and user id
 			String sessionId = UsageSessionService.getSessionId();
@@ -876,7 +913,7 @@ public class BaseDbDoubleStorage
 			// collect the fields
 			Object fields[] = new Object[4];
 			fields[0] = m_resourceTableName;
-			fields[1] = internalRecordId(container.getReference() + "/" + id);
+			fields[1] = doubleStorageSql.getRecordId(container.getReference() + "/" + id);
 			fields[2] = TimeService.newTime();
 			fields[3] = sessionId;
 
@@ -929,10 +966,8 @@ public class BaseDbDoubleStorage
 		Document doc = Xml.createDocument();
 		edit.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "update " + m_resourceTableName
-		// %%% others
-				+ " set " + updateSet(m_resourceTableOtherFields) + " XML = ?" + " where (" + m_resourceTableContainerIdField
-				+ " = ? )" + " and ( " + m_resourceTableIdField + " = ? )";
+		String statement = doubleStorageSql.getUpdate2Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField,
+				updateSet(m_resourceTableOtherFields));
 
 		Object[] flds = m_user.storageFields(edit);
 		if (flds == null) flds = new Object[0];
@@ -965,12 +1000,12 @@ public class BaseDbDoubleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_resourceTableName;
-			lockFields[1] = internalRecordId(container.getReference() + "/" + edit.getId());
+			lockFields[1] = doubleStorageSql.getRecordId(container.getReference() + "/" + edit.getId());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
@@ -1018,12 +1053,12 @@ public class BaseDbDoubleStorage
 		else if (m_locksAreInTable)
 		{
 			// remove the lock
-			String statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			String statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_resourceTableName;
-			lockFields[1] = internalRecordId(container.getReference() + "/" + edit.getId());
+			lockFields[1] = doubleStorageSql.getRecordId(container.getReference() + "/" + edit.getId());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
@@ -1049,8 +1084,7 @@ public class BaseDbDoubleStorage
 	public void removeResource(Entity container, Edit edit)
 	{
 		// form the SQL delete statement
-		String statement = "delete from " + m_resourceTableName + " where (" + m_resourceTableContainerIdField + " = ? )"
-				+ " and ( " + m_resourceTableIdField + " = ? )";
+		String statement = doubleStorageSql.getDelete2Sql(m_resourceTableName, m_resourceTableIdField, m_resourceTableContainerIdField);
 		Object[] fields = new Object[2];
 		fields[0] = container.getReference();
 		fields[1] = edit.getId();
@@ -1078,19 +1112,18 @@ public class BaseDbDoubleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = doubleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
 			lockFields[0] = m_resourceTableName;
-			lockFields[1] = internalRecordId(container.getReference() + "/" + edit.getId());
+			lockFields[1] = doubleStorageSql.getRecordId(container.getReference() + "/" + edit.getId());
 			boolean ok = m_sql.dbWrite(statement, lockFields);
 			if (!ok)
 			{
 				M_log.warn("removeResource: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 			}
 		}
-
 		else
 		{
 			// process the delete statement
@@ -1111,7 +1144,7 @@ public class BaseDbDoubleStorage
 	protected String valuesParams(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(" ?,");
@@ -1129,7 +1162,7 @@ public class BaseDbDoubleStorage
 	protected String updateSet(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(fields[i] + " = ?,");
@@ -1152,7 +1185,7 @@ public class BaseDbDoubleStorage
 	 */
 	protected String insertFields(String before1, String before2, String[] fields, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 
 		buf.append(before1);
@@ -1204,7 +1237,7 @@ public class BaseDbDoubleStorage
 			filterAfter = true;
 		}
 
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		int numFields = 1;
 
 		// start the outer statement, later finished with a limiting clause
@@ -1219,6 +1252,10 @@ public class BaseDbDoubleStorage
 			{
 				buf.append("select messages.XML from (");
 				buf.append("select XML from " + m_resourceTableName);
+			}
+			else if ("mssql".equals(m_sql.getVendor()))
+			{
+				buf.append("select top (" + limitedToLatest + ") XML from " + m_resourceTableName);
 			}
 			else
 			// if ("hsqldb".equals(m_sql.getVendor()))
@@ -1285,6 +1322,11 @@ public class BaseDbDoubleStorage
 				buf.append(" ) AS messages LIMIT " + limitedToLatest);
 				useLimitField = false;
 			}
+			else if ("mssql".equals(m_sql.getVendor()))
+			{
+				// explicitly do nothing here, we handle with 'top' clause above
+				useLimitField = false;
+			}
 			else
 			// if ("hsqldb".equals(m_sql.getVendor()))
 			{
@@ -1300,8 +1342,7 @@ public class BaseDbDoubleStorage
 		{
 			fields[pos++] = afterDate;
 		}
-		if ((m_resourceTableDraftField != null) && (m_resourceTableOwnerField != null) && (draftsForId != null)
-				&& (!"*".equals(draftsForId)))
+		if ((m_resourceTableDraftField != null) && (m_resourceTableOwnerField != null) && (draftsForId != null) && (!"*".equals(draftsForId)))
 		{
 			fields[pos++] = draftsForId;
 		}
@@ -1394,8 +1435,7 @@ public class BaseDbDoubleStorage
 		final int pos = root.length();
 
 		// read all users from the db
-		String sql = "select " + m_containerTableIdField + " from " + m_containerTableName + " where " + m_containerTableIdField
-				+ " like ?";
+		String sql = doubleStorageSql.getSelect9Sql(m_containerTableName, m_containerTableIdField);
 		Object fields[] = new Object[1];
 		fields[0] = root + "%";
 
@@ -1418,25 +1458,5 @@ public class BaseDbDoubleStorage
 		});
 
 		return all;
-	}
-
-	/**
-	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
-	 * 
-	 * @param recordId
-	 * @return The record ID to use internally in the database
-	 */
-	private String internalRecordId(String recordId)
-	{
-		if ("mysql".equals(m_sql.getVendor()))
-		{
-			if (recordId == null) recordId = "null";
-			return recordId.hashCode() + " - " + recordId;
-		}
-		else
-		// oracle, hsqldb
-		{
-			return recordId;
-		}
 	}
 }

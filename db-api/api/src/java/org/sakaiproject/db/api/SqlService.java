@@ -294,10 +294,10 @@ public interface SqlService
 	 * @param sql
 	 *        The sql statement.
 	 * @param field
-	 *        A StringBuffer that will be filled with the field.
+	 *        A StringBuilder that will be filled with the field.
 	 * @return The Connection holding the lock.
 	 */
-	Connection dbReadLock(String sql, StringBuffer field);
+	Connection dbReadLock(String sql, StringBuilder field);
 
 	/**
 	 * Commit the update that was locked on this connection.
@@ -363,4 +363,11 @@ public interface SqlService
 	 * @return The SQL statement constant for a Boolean or Bit field for this value.
 	 */
 	String getBooleanConstant(boolean value);
+
+	/**
+	 * @param sql
+	 * @param reader
+	 * @return
+	 */
+	Connection dbReadLock(String sql, SqlReader reader);
 }
