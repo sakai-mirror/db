@@ -222,13 +222,13 @@ public class SchemaConversionDriver
 	public String[] getNewColumnNames()
 	{
 		String nameStr = p.getProperty(base + ".new.columns.names");
-		System.out.println(base + ".new.columns.names == " + nameStr);
+		//System.out.println(base + ".new.columns.names == " + nameStr);
 		String[] names = null;
 		if (nameStr != null && !nameStr.trim().equals(""))
 		{
 			names = nameStr.split(",");
 		}
-		System.out.println(base + ".new.columns.names == " + names);
+		//System.out.println(base + ".new.columns.names == " + names);
 		return names;
 	}
 
@@ -245,13 +245,13 @@ public class SchemaConversionDriver
 	public String[] getNewColumnTypes()
 	{
 		String typeStr = p.getProperty(base + ".new.columns.types");
-		System.out.println(base + ".new.columns.types == " + typeStr);
+		//System.out.println(base + ".new.columns.types == " + typeStr);
 		String[] types = null;
 		if (typeStr != null && !typeStr.trim().equals(""))
 		{
 			types = typeStr.split(",");
 		}
-		System.out.println(base + ".new.columns.types == " + types);
+		//System.out.println(base + ".new.columns.types == " + types);
 		return types;
 	}
 
@@ -271,13 +271,13 @@ public class SchemaConversionDriver
 	public String[] getNewColumnQualifiers()
 	{
 		String qualifierStr = p.getProperty(base + ".new.columns.qualifiers");
-		System.out.println(base + ".new.columns.qualifiers == " + qualifierStr);
+		//System.out.println(base + ".new.columns.qualifiers == " + qualifierStr);
 		String[] qualifiers = null;
 		if (qualifierStr != null && !qualifierStr.trim().equals(""))
 		{
 			qualifiers = qualifierStr.split(",");
 		}
-		System.out.println(base + ".new.columns.qualifiers == " + qualifiers);
+		//System.out.println(base + ".new.columns.qualifiers == " + qualifiers);
 		return qualifiers;
 	}
 
