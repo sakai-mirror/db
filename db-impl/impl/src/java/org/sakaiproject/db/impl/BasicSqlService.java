@@ -38,7 +38,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
@@ -1978,19 +1977,6 @@ public abstract class BasicSqlService implements SqlService
 					else
 					{
 						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), m_cal);
-					}
-					pos++;
-				}
-				else if (fields[i] instanceof Date)
-				{
-					Date d = (Date) fields[i];
-					if ("hsqldb".equals(getVendor()))
-					{
-						pstmt.setTimestamp(pos, new Timestamp(d.getTime()), null);
-					}
-					else
-					{
-						pstmt.setTimestamp(pos, new Timestamp(d.getTime()), m_cal);
 					}
 					pos++;
 				}
