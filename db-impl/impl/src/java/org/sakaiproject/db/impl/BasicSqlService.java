@@ -37,7 +37,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
@@ -2039,12 +2038,6 @@ public abstract class BasicSqlService implements SqlService
 				{
 					Time t = (Time) fields[i];
 					sqlServiceSql.setTimestamp(pstmt, new Timestamp(t.getTime()), m_cal, pos);
-					pos++;
-				}
-				else if (fields[i] instanceof Date)
-				{
-					Date d = (Date) fields[i];
-					sqlServiceSql.setTimestamp(pstmt, new Timestamp(d.getTime()), m_cal, pos);
 					pos++;
 				}
 				else if (fields[i] instanceof Long)
