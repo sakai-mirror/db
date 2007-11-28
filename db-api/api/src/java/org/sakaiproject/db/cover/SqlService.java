@@ -189,7 +189,7 @@ public class SqlService
 		service.dbReadBlobAndUpdate(param0, param1);
 	}
 
-	public static java.sql.Connection dbReadLock(java.lang.String param0, java.lang.StringBuilder param1)
+	public static java.sql.Connection dbReadLock(java.lang.String param0, java.lang.StringBuffer param1)
 	{
 		org.sakaiproject.db.api.SqlService service = getInstance();
 		if (service == null) return null;

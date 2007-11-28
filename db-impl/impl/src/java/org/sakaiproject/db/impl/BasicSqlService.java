@@ -4,17 +4,17 @@
  ***********************************************************************************
  *
  * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
- *
- * Licensed under the Educational Community License, Version 1.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * 
+ * Licensed under the Educational Community License, Version 1.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.opensource.org/licenses/ecl1.php
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
+ * 
+ * Unless required by applicable law or agreed to in writing, software 
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and 
  * limitations under the License.
  *
  **********************************************************************************/
@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -39,7 +40,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.Vector;
 
@@ -79,23 +79,23 @@ public abstract class BasicSqlService implements SqlService
 	/** Should we do a commit after a single statement read? */
 	protected boolean m_commitAfterRead = false;
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Dependencies
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * @return the UsageSessionService collaborator.
 	 */
 	protected abstract UsageSessionService usageSessionService();
-
+	
 	/**
 	 * @return the ThreadLocalManager collaborator.
 	 */
 	protected abstract ThreadLocalManager threadLocalManager();
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Configuration
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * Configuration: should we do a commit after each single SQL read?
@@ -192,39 +192,15 @@ public abstract class BasicSqlService implements SqlService
 		m_autoDdl = new Boolean(value).booleanValue();
 	}
 
-	/** contains a map of the database dependent handlers. */
-	protected Map<String, SqlServiceSql> databaseBeans;
-
-	/** The db handler we are using. */
-	protected SqlServiceSql sqlServiceSql;
-
-	/**
-	 * sets which bean containing database dependent code should be used depending on the database vendor.
-	 */
-	public void setDatabaseBeans(Map databaseBeans)
-	{
-		this.databaseBeans = databaseBeans;
-	}
-
-	/**
-	 * sets which bean containing database dependent code should be used depending on the database vendor.
-	 */
-	public void setSqlServiceSql(String vendor)
-	{
-		this.sqlServiceSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
-	}
-
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Init and Destroy
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * Final initialization, once all dependencies are set.
 	 */
 	public void init()
 	{
-		setSqlServiceSql(getVendor());
-
 		// if we are auto-creating our schema, check and create
 		if (m_autoDdl)
 		{
@@ -242,9 +218,9 @@ public abstract class BasicSqlService implements SqlService
 		LOG.info("destroy()");
 	}
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Work interface methods: org.sakaiproject.sql.SqlService
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * {@inheritDoc}
@@ -291,8 +267,7 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public boolean transact(Runnable callback, String tag)
 	{
-		// if we are already in a transaction, stay in it (don't start a new one), and just run the callback (no retries, let the outside transaction
-		// code handle that)
+		// if we are already in a transaction, stay in it (don't start a new one), and just run the callback (no retries, let the outside transaction code handle that)
 		if (threadLocalManager().get(TRANSACTION_CONNECTION) != null)
 		{
 			callback.run();
@@ -306,7 +281,7 @@ public abstract class BasicSqlService implements SqlService
 			{
 				// make a little fuss
 				LOG.warn("transact: deadlock: retrying (" + i + " / " + m_deadlockRetries + "): " + tag);
-
+				
 				// do a little wait, longer for each retry
 				// TODO: randomize?
 				try
@@ -325,14 +300,14 @@ public abstract class BasicSqlService implements SqlService
 				connection = borrowConnection();
 				wasCommit = connection.getAutoCommit();
 				connection.setAutoCommit(false);
-
+				
 				// store the connection in the thread
 				threadLocalManager().set(TRANSACTION_CONNECTION, connection);
 
 				callback.run();
-
+				
 				connection.commit();
-
+				
 				return true;
 			}
 			catch (SqlServiceDeadlockException e)
@@ -414,7 +389,7 @@ public abstract class BasicSqlService implements SqlService
 				}
 			}
 		}
-
+		
 		return false;
 	}
 
@@ -447,8 +422,8 @@ public abstract class BasicSqlService implements SqlService
 	}
 
 	/**
-	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for
-	 * each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a String, will be placed in the list.
+	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
+	 * String, will be placed in the list.
 	 * 
 	 * @param sql
 	 *        The sql statement.
@@ -469,8 +444,8 @@ public abstract class BasicSqlService implements SqlService
 	}
 
 	/**
-	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for
-	 * each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a String, will be placed in the list.
+	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
+	 * String, will be placed in the list.
 	 * 
 	 * @param callerConn
 	 *        The db connection object to use (if not null).
@@ -489,10 +464,11 @@ public abstract class BasicSqlService implements SqlService
 		{
 			callerConn = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
 		}
-
+		
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbRead(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", SqlReader " + reader + ")");
+			LOG.debug("dbRead(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", SqlReader " + reader
+					+ ")");
 		}
 
 		// for DEBUG
@@ -506,7 +482,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuilder buf = new StringBuilder();
+			StringBuffer buf = new StringBuffer();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -571,7 +547,8 @@ public abstract class BasicSqlService implements SqlService
 				}
 				catch (Throwable t)
 				{
-					LOG.warn("Sql.dbRead: unable to read a result from sql: " + sql + debugFields(fields) + " row: " + result.getRow());
+					LOG.warn("Sql.dbRead: unable to read a result from sql: " + sql + debugFields(fields) + " row: "
+							+ result.getRow());
 				}
 			}
 		}
@@ -609,7 +586,8 @@ public abstract class BasicSqlService implements SqlService
 			}
 		}
 
-		if (m_showSql) debug("Sql.dbRead: time: " + connectionTime + " / " + stmtTime + " / " + resultsTime + " #: " + count, sql, fields);
+		if (m_showSql)
+			debug("Sql.dbRead: time: " + connectionTime + " / " + stmtTime + " / " + resultsTime + " #: " + count, sql, fields);
 
 		return rv;
 	}
@@ -656,7 +634,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbReadBinary(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", byte[] " + value + ")");
+			LOG.debug("dbReadBinary(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", byte[] " + value
+					+ ")");
 		}
 
 		// for DEBUG
@@ -739,12 +718,12 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 	}
 
 	/**
-	 * Read a single field / record from the db, returning a stream on the result record / field. The stream holds the conection open - so it must be
-	 * closed or finalized quickly!
+	 * Read a single field / record from the db, returning a stream on the result record / field. The stream holds the conection open - so it must be closed or finalized quickly!
 	 * 
 	 * @param sql
 	 *        The sql statement.
@@ -858,7 +837,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 
 		return rv;
 	}
@@ -921,7 +901,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbWriteBinary(String " + sql + ", Object[] " + fields + ", byte[] " + var + ", int " + offset + ", int " + len + ")");
+			LOG.debug("dbWriteBinary(String " + sql + ", Object[] " + fields + ", byte[] " + var + ", int " + offset + ", int "
+					+ len + ")");
 		}
 
 		// for DEBUG
@@ -1012,7 +993,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql write binary: len: " + len + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql write binary: len: " + len + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 
 		return true;
 	}
@@ -1112,8 +1094,7 @@ public abstract class BasicSqlService implements SqlService
 	 *        The connection to use.
 	 * @param failQuiet
 	 *        If true, don't log errors from statement failure
-	 * @return true if successful, false if not due to unique constraint violation or duplicate key (i.e. the record already exists) OR we are
-	 *         instructed to fail quiet.
+	 * @return true if successful, false if not due to unique constraint violation or duplicate key (i.e. the record already exists) OR we are instructed to fail quiet.
 	 */
 	protected boolean dbWrite(String sql, Object[] fields, String lastField, Connection callerConnection, boolean failQuiet)
 	{
@@ -1125,8 +1106,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", String " + lastField + ", Connection " + callerConnection + ", boolean "
-					+ failQuiet + ")");
+			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", String " + lastField + ", Connection "
+					+ callerConnection + ", boolean " + failQuiet + ")");
 		}
 
 		// for DEBUG
@@ -1136,7 +1117,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuilder buf = new StringBuilder();
+			StringBuffer buf = new StringBuffer();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -1195,8 +1176,21 @@ public abstract class BasicSqlService implements SqlService
 			// last, put in the string value
 			if (lastField != null)
 			{
-				sqlServiceSql.setBytes(pstmt, lastField, pos);
-				pos++;
+				if ("mysql".equals(m_vendor))
+				{
+					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
+					// MySQL setCharacterStream() is broken and truncates UTF-8
+					// international characters sometimes. So use setBytes()
+					// instead (just for MySQL).
+					pstmt.setBytes(pos, lastField.getBytes("UTF-8"));
+					pos++;
+
+				}
+				else
+				{
+					pstmt.setCharacterStream(pos, new StringReader(lastField), lastField.length());
+					pos++;
+				}
 			}
 
 			int result = pstmt.executeUpdate();
@@ -1213,18 +1207,31 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem?... check each vendor's error codes
-			boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
+			boolean recordAlreadyExists = false;
+			if ("hsqldb".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == -104;
+			}
+			else if ("mysql".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1062;
+			}
+			else if ("oracle".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1;
+			}
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
+						+ e);
 			}
 
 			// if asked to fail quietly, just return false if we find this error.
 			if (recordAlreadyExists || failQuiet) return false;
 
 			// perhaps due to a mysql deadlock?
-			if (sqlServiceSql.isDeadLockError(e.getErrorCode()))
+			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
 			{
 				// just a little fuss
 				LOG.warn("Sql.dbWrite(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
@@ -1278,8 +1285,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("Sql.dbWrite(): len: " + ((lastField != null) ? "" + lastField.length() : "null") + "  time: " + connectionTime + " /  "
-					+ (System.currentTimeMillis() - start), sql, fields);
+			debug("Sql.dbWrite(): len: " + ((lastField != null) ? "" + lastField.length() : "null") + "  time: " + connectionTime
+					+ " /  " + (System.currentTimeMillis() - start), sql, fields);
 
 		return true;
 	}
@@ -1337,7 +1344,7 @@ public abstract class BasicSqlService implements SqlService
 		if (LOG.isDebugEnabled())
 		{
 			String userId = usageSessionService().getSessionId();
-			StringBuilder buf = new StringBuilder();
+			StringBuffer buf = new StringBuffer();
 			if (fields != null)
 			{
 				buf.append(fields[0]);
@@ -1424,11 +1431,24 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem... check each vendor's error codes
-			boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
+			boolean recordAlreadyExists = false;
+			if ("hsqldb".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == -104;
+			}
+			else if ("mysql".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1062;
+			}
+			else if ("oracle".equals(m_vendor))
+			{
+				recordAlreadyExists = e.getErrorCode() == 1;
+			}
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
+						+ " " + e);
 			}
 
 			if (recordAlreadyExists) return null;
@@ -1437,16 +1457,14 @@ public abstract class BasicSqlService implements SqlService
 			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
 			{
 				// just a little fuss
-				LOG.warn("Sql.dbInsert(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
-						+ e.toString());
+				LOG.warn("Sql.dbInsert(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
 				throw new SqlServiceDeadlockException(e);
 			}
 
 			else if (recordAlreadyExists)
 			{
 				// just a little fuss
-				LOG.warn("Sql.dbInsert(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
-						+ " " + e.toString());
+				LOG.warn("Sql.dbInsert(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
 				throw new SqlServiceUniqueViolationException(e);
 			}
 
@@ -1490,7 +1508,8 @@ public abstract class BasicSqlService implements SqlService
 			}
 		}
 
-		if (m_showSql) debug("Sql.dbWrite(): len: " + "  time: " + connectionTime + " /  " + (System.currentTimeMillis() - start), sql, fields);
+		if (m_showSql)
+			debug("Sql.dbWrite(): len: " + "  time: " + connectionTime + " /  " + (System.currentTimeMillis() - start), sql, fields);
 
 		return rv;
 	}
@@ -1512,9 +1531,9 @@ public abstract class BasicSqlService implements SqlService
 			LOG.debug("dbReadBlobAndUpdate(String " + sql + ", byte[] " + content + ")");
 		}
 
-		if (!sqlServiceSql.canReadAndUpdateBlob())
+		if (!"oracle".equals(getVendor()))
 		{
-			throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() is not supported by the " + getVendor() + " database.");
+			throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() only works with an Oracle DB");
 		}
 
 		// for DEBUG
@@ -1603,7 +1622,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql dbReadBlobAndUpdate: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, null);
+			debug("sql dbReadBlobAndUpdate: len: " + lenRead + "  time: " + connectionTime + " / "
+					+ (System.currentTimeMillis() - start), sql, null);
 	}
 
 	/**
@@ -1612,16 +1632,16 @@ public abstract class BasicSqlService implements SqlService
 	 * @param sql
 	 *        The sql statement.
 	 * @param field
-	 *        A StringBuilder that will be filled with the field.
+	 *        A StringBuffer that will be filled with the field.
 	 * @return The Connection holding the lock.
 	 */
-	public Connection dbReadLock(String sql, StringBuilder field)
+	public Connection dbReadLock(String sql, StringBuffer field)
 	{
 		// Note: does not support TRANSACTION_CONNECTION -ggolden
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbReadLock(String " + sql + ", StringBuilder " + field + ")");
+			LOG.debug("dbReadLock(String " + sql + ", StringBuffer " + field + ")");
 		}
 
 		Connection conn = null;
@@ -1656,105 +1676,6 @@ public abstract class BasicSqlService implements SqlService
 				// get the result and pack into the return buffer
 				String rv = result.getString(1);
 				if ((field != null) && (rv != null)) field.append(rv);
-			}
-
-			// otherwise we fail
-			else
-			{
-				closeConn = true;
-			}
-		}
-
-		// this is likely the error when the record is otherwise locked - we fail
-		catch (SQLException e)
-		{
-			// Note: ORA-00054 gives an e.getErrorCode() of 54, if anyone cares...
-			// LOG.warn("Sql.dbUpdateLock(): " + e.getErrorCode() + " - " + e);
-			closeConn = true;
-		}
-
-		catch (Exception e)
-		{
-			LOG.warn("Sql.dbReadLock(): " + e);
-			closeConn = true;
-		}
-
-		finally
-		{
-			try
-			{
-				// close the result and statement
-				if (null != result) result.close();
-				if (null != stmt) stmt.close();
-
-				// if we are failing, restore and release the connectoin
-				if ((closeConn) && (conn != null))
-				{
-					// just in case we got a lock
-					conn.rollback();
-					if (resetAutoCommit) conn.setAutoCommit(autoCommit);
-					returnConnection(conn);
-					conn = null;
-				}
-			}
-			catch (Exception e)
-			{
-				LOG.warn("Sql.dbReadLock(): " + e);
-			}
-		}
-
-		return conn;
-	}
-
-	
-	/**
-	 * Read a single field from the db, from a single record, return the value found, and lock for update.
-	 * 
-	 * @param sql
-	 *        The sql statement.
-	 * @param reader
-	 *        A SqlReader that buils the result.
-	 * @return The Connection holding the lock.
-	 */
-	public Connection dbReadLock(String sql, SqlReader reader)
-	{
-		// Note: does not support TRANSACTION_CONNECTION -ggolden
-
-		if (LOG.isDebugEnabled())
-		{
-			LOG.debug("dbReadLock(String " + sql + ")");
-		}
-
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet result = null;
-		boolean autoCommit = false;
-		boolean resetAutoCommit = false;
-		boolean closeConn = false;
-
-		try
-		{
-			// get a new conncetion
-			conn = borrowConnection();
-
-			// adjust to turn off auto commit - we need a transaction
-			autoCommit = conn.getAutoCommit();
-			if (autoCommit)
-			{
-				conn.setAutoCommit(false);
-				resetAutoCommit = true;
-			}
-
-			if (LOG.isDebugEnabled()) LOG.debug("Sql.dbReadLock():\n" + sql);
-
-			// create a statement and execute
-			stmt = conn.createStatement();
-			result = stmt.executeQuery(sql);
-
-			// if we have a result record
-			if (result.next())
-			{
-				reader.readSqlResultRecord(result);
 			}
 
 			// otherwise we fail
@@ -1840,8 +1761,20 @@ public abstract class BasicSqlService implements SqlService
 			// prepare the update statement and fill with the last variable (if any)
 			if (var != null)
 			{
-				sqlServiceSql.setBytes(pstmt, var, pos);
-				pos++;
+				if ("mysql".equals(m_vendor))
+				{
+					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
+					// MySQL setCharacterStream() is broken and truncates UTF-8
+					// international characters sometimes. So use setBytes()
+					// instead (just for MySQL).
+					pstmt.setBytes(pos, var.getBytes("UTF-8"));
+					pos++;
+				}
+				else
+				{
+					pstmt.setCharacterStream(pos, new StringReader(var), var.length());
+					pos++;
+				}
 			}
 
 			// run the SQL statement
@@ -1934,7 +1867,7 @@ public abstract class BasicSqlService implements SqlService
 			{
 				// read the first line, skipping any '--' comment lines
 				boolean firstLine = true;
-				StringBuilder buf = new StringBuilder();
+				StringBuffer buf = new StringBuffer();
 				for (String line = r.readLine(); line != null; line = r.readLine())
 				{
 					line = line.trim();
@@ -2037,7 +1970,14 @@ public abstract class BasicSqlService implements SqlService
 				else if (fields[i] instanceof Time)
 				{
 					Time t = (Time) fields[i];
-					sqlServiceSql.setTimestamp(pstmt, new Timestamp(t.getTime()), m_cal, pos);
+					if ("hsqldb".equals(getVendor()))
+					{
+						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), null);
+					}
+					else
+					{
+						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), m_cal);
+					}
 					pos++;
 				}
 				else if (fields[i] instanceof Long)
@@ -2063,18 +2003,24 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setBoolean(pos, ((Boolean) fields[i]).booleanValue());
 					pos++;
 				}
-				else if ( fields[i] instanceof byte[] ) 
-				{
-					pstmt.setBytes(pos, (byte[])fields[i]);
-					pos++;
-				}
-				
 				// %%% support any other types specially?
 				else
 				{
 					String value = fields[i].toString();
-					sqlServiceSql.setBytes(pstmt, value, pos);
-					pos++;
+					if ("mysql".equals(m_vendor))
+					{
+						// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
+						// MySQL setCharacterStream() is broken and truncates UTF-8
+						// international characters sometimes. So use setBytes()
+						// instead (just for MySQL).
+						pstmt.setBytes(pos, value.getBytes("UTF-8"));
+						pos++;
+					}
+					else
+					{
+						pstmt.setCharacterStream(pos, new StringReader(value), value.length());
+						pos++;
+					}
 				}
 			}
 		}
@@ -2095,9 +2041,9 @@ public abstract class BasicSqlService implements SqlService
 		// no error will mess us up!
 		try
 		{
-			// StringBuilder buf = (StringBuilder) CurrentService.getInThread("DEBUG");
+			// StringBuffer buf = (StringBuffer) CurrentService.getInThread("DEBUG");
 			// if (buf == null) return;
-			StringBuilder buf = new StringBuilder(2048);
+			StringBuffer buf = new StringBuffer(2048);
 
 			// skip some chatter
 			// if (str.indexOf("SAKAI_CLUSTER") != -1) return;
@@ -2123,7 +2069,7 @@ public abstract class BasicSqlService implements SqlService
 
 	protected String debugFields(Object[] fields)
 	{
-		StringBuilder buf = new StringBuilder();
+		StringBuffer buf = new StringBuffer();
 		if (fields != null)
 		{
 			for (int i = 0; i < fields.length; i++)
@@ -2161,8 +2107,8 @@ public abstract class BasicSqlService implements SqlService
 		{
 			if (SWC_LOG.isDebugEnabled())
 			{
-				SWC_LOG.debug("new StreamWithConnection(InputStream " + stream + ", ResultSet " + result + ", PreparedStatement " + pstmt
-						+ ", Connection " + conn + ")");
+				SWC_LOG.debug("new StreamWithConnection(InputStream " + stream + ", ResultSet " + result + ", PreparedStatement "
+						+ pstmt + ", Connection " + conn + ")");
 			}
 
 			m_conn = conn;
@@ -2325,9 +2271,19 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Long getNextSequence(String tableName, Connection conn)
 	{
-		String sql = sqlServiceSql.getNextSequenceSql(tableName);
+		if ("hsqldb".equals(m_vendor))
+		{
+			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL"; // TODO: dual for hsql?
+			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
+		}
 
-		return (sql == null ? null : new Long((String) (dbRead(conn, sql, null, null).get(0))));
+		if ("oracle".equals(m_vendor))
+		{
+			String sql = "SELECT " + tableName + ".NEXTVAL FROM DUAL";
+			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
+		}
+
+		return null;
 	}
 
 	/**
@@ -2335,6 +2291,11 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public String getBooleanConstant(boolean value)
 	{
-		return sqlServiceSql.getBooleanConstant(value);
+		if ("mysql".equals(m_vendor))
+		{
+			return value ? "true" : "false";
+		}
+
+		return value ? "1" : "0";
 	}
 }

@@ -29,9 +29,6 @@ import java.util.Collections;
 
 import org.hibernate.HibernateException;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.dialect.function.ClassicAvgFunction;
-import org.hibernate.dialect.function.ClassicCountFunction;
-import org.hibernate.dialect.function.ClassicSumFunction;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -102,19 +99,5 @@ public class AddableSessionFactoryBean extends LocalSessionFactoryBean implement
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException
 	{
 		this.applicationContext = applicationContext;
-	}
-	
-	/**
-	 * Provide backwards compatibility with Hibernate 3.1.x behavior for
-	 * aggregate functions.
-	 */
-	@Override
-	protected Configuration newConfiguration() throws HibernateException 
-	{
-		final Configuration classicCfg = new Configuration();
-		classicCfg.addSqlFunction("count", new ClassicCountFunction());
-		classicCfg.addSqlFunction("avg", new ClassicAvgFunction());
-		classicCfg.addSqlFunction("sum", new ClassicSumFunction());
-		return classicCfg;
 	}
 }
