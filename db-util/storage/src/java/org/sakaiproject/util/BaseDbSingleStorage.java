@@ -26,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -35,6 +36,9 @@ import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Edit;
 import org.sakaiproject.entity.api.Entity;
+import org.sakaiproject.entity.api.serialize.EntityParseException;
+import org.sakaiproject.entity.api.serialize.EntityReader;
+import org.sakaiproject.entity.api.serialize.EntityReaderHandler;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.time.cover.TimeService;
@@ -58,8 +62,10 @@ import org.w3c.dom.Element;
  * should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
-public class BaseDbSingleStorage
+public class BaseDbSingleStorage implements DbSingleStorage 
 {
+	public static final String STORAGE_FIELDS = "XML";
+
 	/** Our logger. */
 	private static Log M_log = LogFactory.getLog(BaseDbSingleStorage.class);
 
@@ -95,6 +101,40 @@ public class BaseDbSingleStorage
 	/** Injected (by constructor) SqlService. */
 	protected SqlService m_sql = null;
 
+	/** contains a map of the database dependent handlers. */
+	protected static Map<String, SingleStorageSql> databaseBeans;
+
+	/** The db handler we are using. */
+	protected SingleStorageSql singleStorageSql;
+
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#setDatabaseBeans(java.util.Map)
+	 */
+	public void setDatabaseBeans(Map databaseBeans)
+	{
+		this.databaseBeans = databaseBeans;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#setSingleStorageSql(java.lang.String)
+	 */
+	public void setSingleStorageSql(String vendor)
+	{
+		this.singleStorageSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+	}
+
+	// since spring is not used and this class is instatiated directly, we need to "inject" these values ourselves
+	static
+	{
+		databaseBeans = new Hashtable<String, SingleStorageSql>();
+		databaseBeans.put("db2", new SingleStorageSqlDb2());
+		databaseBeans.put("default", new SingleStorageSqlDefault());
+		databaseBeans.put("hsql", new SingleStorageSqlHSql());
+		databaseBeans.put("mssql", new SingleStorageSqlMsSql());
+		databaseBeans.put("mysql", new SingleStorageSqlMySql());
+		databaseBeans.put("oracle", new SingleStorageSqlOracle());
+	}
+
 	/**
 	 * Construct.
 	 * 
@@ -123,6 +163,8 @@ public class BaseDbSingleStorage
 		m_resourceEntryTagName = resourceEntryName;
 		m_user = user;
 		m_sql = sqlService;
+
+		setSingleStorageSql(m_sql.getVendor());
 	}
 
 	/**
@@ -204,8 +246,7 @@ public class BaseDbSingleStorage
 	public boolean checkResource(String id)
 	{
 		// just see if the record exists
-		String sql = "select " + m_resourceTableIdField + " from " + m_resourceTableName + " where ( " + m_resourceTableIdField
-				+ " = ? )";
+		String sql = singleStorageSql.getResourceIdSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
@@ -226,7 +267,7 @@ public class BaseDbSingleStorage
 		Entity entry = null;
 
 		// get the user from the db
-		String sql = "select XML from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
+		String sql = singleStorageSql.getXmlSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(id);
@@ -252,7 +293,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName;
+		String sql = singleStorageSql.getXmlSql(m_resourceTableName);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql);
@@ -272,32 +313,8 @@ public class BaseDbSingleStorage
 
 	public List getAllResources(int first, int last)
 	{
-		String sql;
-		Object[] fields = null;
-		if ("oracle".equals(m_sql.getVendor()))
-		{
-			// use Oracle RANK function
-			sql = "select XML from" + " (select XML" + " ,RANK() OVER" + " (order by " + m_resourceTableIdField + ") as rank"
-					+ " from " + m_resourceTableName + " order by " + m_resourceTableIdField + " asc)"
-					+ " where rank between ? and ?";
-			fields = new Object[2];
-			fields[0] = new Long(first);
-			fields[1] = new Long(last);
-		}
-		else if ("mysql".equals(m_sql.getVendor()))
-		{
-			// use MySQL SQL LIMIT clause
-			sql = "select XML from " + m_resourceTableName + " order by " + m_resourceTableIdField + " asc " + " limit "
-					+ (last - first + 1) + " offset " + (first - 1);
-		}
-		else
-		// if ("hsqldb".equals(m_sql.getVendor()))
-		{
-			// use SQL2000 LIMIT clause
-			sql = "select " + "limit " + (first - 1) + " " + (last - first + 1) + " " + "XML from " + m_resourceTableName
-					+ " order by " + m_resourceTableIdField + " asc";
-		}
-
+		String sql = singleStorageSql.getXmlSql(m_resourceTableIdField, m_resourceTableName, first, last);
+		Object[] fields = singleStorageSql.getXmlFields(first, last);
 		List xml = m_sql.dbRead(sql, fields, null);
 		List rv = new Vector();
 
@@ -319,7 +336,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all count
-		String sql = "select count(1) from " + m_resourceTableName;
+		String sql = singleStorageSql.getNumRowsSql(m_resourceTableName);
 
 		List results = m_sql.dbRead(sql, null, new SqlReader()
 		{
@@ -347,7 +364,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all where count
-		String sql = "select count(1) from " + m_resourceTableName + " " + sqlWhere;
+		String sql = singleStorageSql.getNumRowsSql(m_resourceTableName, sqlWhere);
 		List results = m_sql.dbRead(sql, null, new SqlReader()
 		{
 			public Object readSqlResultRecord(ResultSet result)
@@ -381,7 +398,7 @@ public class BaseDbSingleStorage
 	public List getAllResourcesWhere(String field, String value)
 	{
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " where " + field + " = ?";
+		String sql = singleStorageSql.getXmlSql(field, m_resourceTableName);
 		Object[] fields = new Object[1];
 		fields[0] = value;
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
@@ -411,9 +428,34 @@ public class BaseDbSingleStorage
 		return all;
 	}
 
+	/**
+	 * Get a limited number of Resources a given field matches a given value, returned in ascending order 
+	 * by another field.  The limit on the number of rows is specified by values for the first item to be 
+	 * retrieved (indexed from 0) and the maxCount.
+	 * @param selectBy The name of a field to be used in selecting resources.
+	 * @param selectByValue The value to select.
+	 * @param orderBy The name of a field to be used in ordering the resources.
+	 * @param tableName The table on which the query is to operate
+	 * @param first A non-negative integer indicating the first record to return
+	 * @param maxCount A positive integer indicating the maximum number of rows to return
+	 * @return The list of all Resources that meet the criteria.
+	 */
+	public List getAllResourcesWhere(String selectBy, String selectByValue, String orderBy, int first, int maxCount)
+	{
+		// read all users from the db
+		String sql = singleStorageSql.getXmlWhereLimitSql(selectBy, orderBy, m_resourceTableName, first, maxCount);
+		Object[] fields = new Object[1];
+		fields[0] = selectByValue;
+		// %%% + "order by " + m_resourceTableOrderField + " asc";
+		return loadResources(sql, fields);
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#getAllResourcesWhereLike(java.lang.String, java.lang.String)
+	 */
 	public List getAllResourcesWhereLike(String field, String value)
 	{
-		String sql = "select XML from " + m_resourceTableName + " where " + field + " like ?";
+		String sql = singleStorageSql.getXmlLikeSql(field, m_resourceTableName);
 		Object[] fields = new Object[1];
 		fields[0] = value;
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
@@ -433,7 +475,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select " + m_resourceTableIdField + ", XML from " + m_resourceTableName;
+		String sql = singleStorageSql.getXmlAndFieldSql(m_resourceTableIdField, m_resourceTableName);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql, null, new SqlReader()
@@ -484,7 +526,7 @@ public class BaseDbSingleStorage
 		List all = new Vector();
 
 		// read all users from the db
-		String sql = "select XML from " + m_resourceTableName + " " + sqlWhere;
+		String sql = singleStorageSql.getXmlWhereSql(m_resourceTableName, sqlWhere);
 		// %%% + "order by " + m_resourceTableOrderField + " asc";
 
 		List xml = m_sql.dbRead(sql);
@@ -520,8 +562,8 @@ public class BaseDbSingleStorage
 		Document doc = Xml.createDocument();
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "insert into " + m_resourceTableName
-				+ insertFields(m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( ?, "
+		String statement = // singleStorageSql.
+		"insert into " + m_resourceTableName + insertFields(m_resourceTableIdField, m_resourceTableOtherFields, "XML") + " values ( ?, "
 				+ valuesParams(m_resourceTableOtherFields) + " ? )";
 
 		Object[] flds = m_user.storageFields(entry);
@@ -557,10 +599,9 @@ public class BaseDbSingleStorage
 		Document doc = Xml.createDocument();
 		entry.toXml(doc, new Stack());
 		String xml = Xml.writeDocumentToString(doc);
-		String statement = "insert into "
-				+ m_resourceTableName
-				+ insertDeleteFields(m_resourceTableIdField, m_resourceTableOtherFields, "RESOURCE_UUID", "DELETE_DATE",
-						"DELETE_USERID", "XML") + " values ( ?, " + valuesParams(m_resourceTableOtherFields) + " ? ,? ,? ,?)";
+		String statement = "insert into " + m_resourceTableName
+				+ insertDeleteFields(m_resourceTableIdField, m_resourceTableOtherFields, "RESOURCE_UUID", "DELETE_DATE", "DELETE_USERID", "XML")
+				+ " values ( ?, " + valuesParams(m_resourceTableOtherFields) + " ? ,? ,? ,?)";
 
 		Object[] flds = m_user.storageFields(entry);
 		if (flds == null) flds = new Object[0];
@@ -633,8 +674,7 @@ public class BaseDbSingleStorage
 		fields[fields.length - 2] = xml;
 		fields[fields.length - 1] = uuid;// caseId(edit.getId());
 
-		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ?"
-				+ " where ( RESOURCE_UUID = ? )";
+		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( RESOURCE_UUID = ? )";
 
 		if (m_locksAreInDb)
 		{
@@ -657,7 +697,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -724,8 +764,7 @@ public class BaseDbSingleStorage
 			if (entry == null) return null;
 
 			// write a lock to the lock table - if we can do it, we get the lock
-			String statement = "insert into SAKAI_LOCKS" + " (TABLE_NAME,RECORD_ID,LOCK_TIME,USAGE_SESSION_ID)"
-					+ " values (?, ?, ?, ?)";
+			String statement = singleStorageSql.getInsertLocks();
 
 			// we need session id and user id
 			String sessionId = UsageSessionService.getSessionId();
@@ -795,8 +834,9 @@ public class BaseDbSingleStorage
 		fields[fields.length - 2] = xml;
 		fields[fields.length - 1] = caseId(edit.getId());
 
-		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ?"
-				+ " where ( " + m_resourceTableIdField + " = ? )";
+		String statement = "update " + m_resourceTableName + " set " + updateSet(m_resourceTableOtherFields) + " XML = ? where ( "
+				+ m_resourceTableIdField + " = ? )";
+		// singleStorageSql.getUpdateXml(m_resourceTableIdField, m_resourceTableOtherFields, m_resourceTableName);
 
 		if (m_locksAreInDb)
 		{
@@ -821,7 +861,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -872,7 +912,7 @@ public class BaseDbSingleStorage
 		else if (m_locksAreInTable)
 		{
 			// remove the lock
-			String statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			String statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -901,7 +941,7 @@ public class BaseDbSingleStorage
 	public void removeResource(Edit edit)
 	{
 		// form the SQL delete statement
-		String statement = "delete from " + m_resourceTableName + " where ( " + m_resourceTableIdField + " = ? )";
+		String statement = singleStorageSql.getDeleteSql(m_resourceTableIdField, m_resourceTableName);
 
 		Object fields[] = new Object[1];
 		fields[0] = caseId(edit.getId());
@@ -929,7 +969,7 @@ public class BaseDbSingleStorage
 			m_sql.dbWrite(statement, fields);
 
 			// remove the lock
-			statement = "delete from SAKAI_LOCKS where TABLE_NAME = ? and RECORD_ID = ?";
+			statement = singleStorageSql.getDeleteLocksSql();
 
 			// collect the fields
 			Object lockFields[] = new Object[2];
@@ -941,7 +981,6 @@ public class BaseDbSingleStorage
 				M_log.warn("remove: missing lock for table: " + lockFields[0] + " key: " + lockFields[1]);
 			}
 		}
-
 		else
 		{
 			// process the delete statement
