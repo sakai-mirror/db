@@ -40,6 +40,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.Vector;
 
@@ -192,7 +193,29 @@ public abstract class BasicSqlService implements SqlService
 		m_autoDdl = new Boolean(value).booleanValue();
 	}
 
-	/**********************************************************************************************************************************************************************************************************************************************************
+	/** contains a map of the database dependent handlers. */
+	protected Map<String, SqlServiceSql> databaseBeans;
+
+	/** The db handler we are using. */
+	protected SqlServiceSql sqlServiceSql;
+
+	/**
+	 * sets which bean containing database dependent code should be used depending on the database vendor.
+	 */
+	public void setDatabaseBeans(Map databaseBeans)
+	{
+		this.databaseBeans = databaseBeans;
+	}
+
+	/**
+	 * sets which bean containing database dependent code should be used depending on the database vendor.
+	 */
+	public void setSqlServiceSql(String vendor)
+	{
+		this.sqlServiceSql = (databaseBeans.containsKey(vendor) ? databaseBeans.get(vendor) : databaseBeans.get("default"));
+	}
+
+	/*************************************************************************************************************************************************
 	 * Init and Destroy
 	 *********************************************************************************************************************************************************************************************************************************************************/
 
@@ -201,6 +224,8 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public void init()
 	{
+		setSqlServiceSql(getVendor());
+
 		// if we are auto-creating our schema, check and create
 		if (m_autoDdl)
 		{
@@ -1176,22 +1201,9 @@ public abstract class BasicSqlService implements SqlService
 			// last, put in the string value
 			if (lastField != null)
 			{
-				if ("mysql".equals(m_vendor))
-				{
-					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-					// MySQL setCharacterStream() is broken and truncates UTF-8
-					// international characters sometimes. So use setBytes()
-					// instead (just for MySQL).
-					pstmt.setBytes(pos, lastField.getBytes("UTF-8"));
-					pos++;
-
-				}
-				else
-				{
-					pstmt.setCharacterStream(pos, new StringReader(lastField), lastField.length());
+				sqlServiceSql.setBytes(pstmt, lastField, pos);
 					pos++;
 				}
-			}
 
 			int result = pstmt.executeUpdate();
 
@@ -1207,19 +1219,7 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem?... check each vendor's error codes
-			boolean recordAlreadyExists = false;
-			if ("hsqldb".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == -104;
-			}
-			else if ("mysql".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1062;
-			}
-			else if ("oracle".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1;
-			}
+			boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
 
 			if (m_showSql)
 			{
@@ -1231,7 +1231,7 @@ public abstract class BasicSqlService implements SqlService
 			if (recordAlreadyExists || failQuiet) return false;
 
 			// perhaps due to a mysql deadlock?
-			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
+			if (sqlServiceSql.isDeadLockError(e.getErrorCode()))
 			{
 				// just a little fuss
 				LOG.warn("Sql.dbWrite(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
@@ -1431,19 +1431,7 @@ public abstract class BasicSqlService implements SqlService
 		catch (SQLException e)
 		{
 			// is this due to a key constraint problem... check each vendor's error codes
-			boolean recordAlreadyExists = false;
-			if ("hsqldb".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == -104;
-			}
-			else if ("mysql".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1062;
-			}
-			else if ("oracle".equals(m_vendor))
-			{
-				recordAlreadyExists = e.getErrorCode() == 1;
-			}
+			boolean recordAlreadyExists = sqlServiceSql.getRecordAlreadyExists(e);
 
 			if (m_showSql)
 			{
@@ -1531,9 +1519,9 @@ public abstract class BasicSqlService implements SqlService
 			LOG.debug("dbReadBlobAndUpdate(String " + sql + ", byte[] " + content + ")");
 		}
 
-		if (!"oracle".equals(getVendor()))
+		if (!sqlServiceSql.canReadAndUpdateBlob())
 		{
-			throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() only works with an Oracle DB");
+			throw new UnsupportedOperationException("BasicSqlService.dbReadBlobAndUpdate() is not supported by the " + getVendor() + " database.");
 		}
 
 		// for DEBUG
@@ -1726,6 +1714,105 @@ public abstract class BasicSqlService implements SqlService
 		return conn;
 	}
 
+	
+	/**
+	 * Read a single field from the db, from a single record, return the value found, and lock for update.
+	 * 
+	 * @param sql
+	 *        The sql statement.
+	 * @param reader
+	 *        A SqlReader that buils the result.
+	 * @return The Connection holding the lock.
+	 */
+	public Connection dbReadLock(String sql, SqlReader reader)
+	{
+		// Note: does not support TRANSACTION_CONNECTION -ggolden
+
+		if (LOG.isDebugEnabled())
+		{
+			LOG.debug("dbReadLock(String " + sql + ")");
+		}
+
+		Connection conn = null;
+		Statement stmt = null;
+		ResultSet result = null;
+		boolean autoCommit = false;
+		boolean resetAutoCommit = false;
+		boolean closeConn = false;
+
+		try
+		{
+			// get a new conncetion
+			conn = borrowConnection();
+
+			// adjust to turn off auto commit - we need a transaction
+			autoCommit = conn.getAutoCommit();
+			if (autoCommit)
+			{
+				conn.setAutoCommit(false);
+				resetAutoCommit = true;
+			}
+
+			if (LOG.isDebugEnabled()) LOG.debug("Sql.dbReadLock():\n" + sql);
+
+			// create a statement and execute
+			stmt = conn.createStatement();
+			result = stmt.executeQuery(sql);
+
+			// if we have a result record
+			if (result.next())
+			{
+				reader.readSqlResultRecord(result);
+			}
+
+			// otherwise we fail
+			else
+			{
+				closeConn = true;
+			}
+		}
+
+		// this is likely the error when the record is otherwise locked - we fail
+		catch (SQLException e)
+		{
+			// Note: ORA-00054 gives an e.getErrorCode() of 54, if anyone cares...
+			// LOG.warn("Sql.dbUpdateLock(): " + e.getErrorCode() + " - " + e);
+			closeConn = true;
+		}
+
+		catch (Exception e)
+		{
+			LOG.warn("Sql.dbReadLock(): " + e);
+			closeConn = true;
+		}
+
+		finally
+		{
+			try
+			{
+				// close the result and statement
+				if (null != result) result.close();
+				if (null != stmt) stmt.close();
+
+				// if we are failing, restore and release the connectoin
+				if ((closeConn) && (conn != null))
+				{
+					// just in case we got a lock
+					conn.rollback();
+					if (resetAutoCommit) conn.setAutoCommit(autoCommit);
+					returnConnection(conn);
+					conn = null;
+				}
+			}
+			catch (Exception e)
+			{
+				LOG.warn("Sql.dbReadLock(): " + e);
+			}
+		}
+
+		return conn;
+	}
+
 	/**
 	 * Commit the update that was locked on this connection.
 	 * 
@@ -1761,21 +1848,9 @@ public abstract class BasicSqlService implements SqlService
 			// prepare the update statement and fill with the last variable (if any)
 			if (var != null)
 			{
-				if ("mysql".equals(m_vendor))
-				{
-					// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-					// MySQL setCharacterStream() is broken and truncates UTF-8
-					// international characters sometimes. So use setBytes()
-					// instead (just for MySQL).
-					pstmt.setBytes(pos, var.getBytes("UTF-8"));
+				sqlServiceSql.setBytes(pstmt, var, pos);
 					pos++;
 				}
-				else
-				{
-					pstmt.setCharacterStream(pos, new StringReader(var), var.length());
-					pos++;
-				}
-			}
 
 			// run the SQL statement
 			int result = pstmt.executeUpdate();
@@ -1970,14 +2045,7 @@ public abstract class BasicSqlService implements SqlService
 				else if (fields[i] instanceof Time)
 				{
 					Time t = (Time) fields[i];
-					if ("hsqldb".equals(getVendor()))
-					{
-						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), null);
-					}
-					else
-					{
-						pstmt.setTimestamp(pos, new Timestamp(t.getTime()), m_cal);
-					}
+					sqlServiceSql.setTimestamp(pstmt, new Timestamp(t.getTime()), m_cal, pos);
 					pos++;
 				}
 				else if (fields[i] instanceof Long)
@@ -2003,27 +2071,21 @@ public abstract class BasicSqlService implements SqlService
 					pstmt.setBoolean(pos, ((Boolean) fields[i]).booleanValue());
 					pos++;
 				}
-				// %%% support any other types specially?
-				else
+				else if ( fields[i] instanceof byte[] ) 
 				{
-					String value = fields[i].toString();
-					if ("mysql".equals(m_vendor))
-					{
-						// see http://bugs.sakaiproject.org/jira/browse/SAK-1737
-						// MySQL setCharacterStream() is broken and truncates UTF-8
-						// international characters sometimes. So use setBytes()
-						// instead (just for MySQL).
-						pstmt.setBytes(pos, value.getBytes("UTF-8"));
+					pstmt.setBytes(pos, (byte[])fields[i]);
 						pos++;
 					}
+				
+				// %%% support any other types specially?
 					else
 					{
-						pstmt.setCharacterStream(pos, new StringReader(value), value.length());
+					String value = fields[i].toString();
+					sqlServiceSql.setBytes(pstmt, value, pos);
 						pos++;
 					}
 				}
 			}
-		}
 
 		return pos;
 	}
@@ -2271,19 +2333,9 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public Long getNextSequence(String tableName, Connection conn)
 	{
-		if ("hsqldb".equals(m_vendor))
-		{
-			String sql = "SELECT NEXT VALUE FOR " + tableName + " FROM DUAL"; // TODO: dual for hsql?
-			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
-		}
+		String sql = sqlServiceSql.getNextSequenceSql(tableName);
 
-		if ("oracle".equals(m_vendor))
-		{
-			String sql = "SELECT " + tableName + ".NEXTVAL FROM DUAL";
-			return new Long((String) (dbRead(conn, sql, null, null).get(0)));
-		}
-
-		return null;
+		return (sql == null ? null : new Long((String) (dbRead(conn, sql, null, null).get(0))));
 	}
 
 	/**
@@ -2291,11 +2343,6 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public String getBooleanConstant(boolean value)
 	{
-		if ("mysql".equals(m_vendor))
-		{
-			return value ? "true" : "false";
-		}
-
-		return value ? "1" : "0";
+		return sqlServiceSql.getBooleanConstant(value);
 	}
 }
