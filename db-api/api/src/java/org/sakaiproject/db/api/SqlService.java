@@ -363,11 +363,4 @@ public interface SqlService
 	 * @return The SQL statement constant for a Boolean or Bit field for this value.
 	 */
 	String getBooleanConstant(boolean value);
-
-	/**
-	 * @param sql
-	 * @param reader
-	 * @return
-	 */
-	Connection dbReadLock(String sql, SqlReader reader);
 }
