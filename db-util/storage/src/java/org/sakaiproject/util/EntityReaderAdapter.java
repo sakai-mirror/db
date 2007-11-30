@@ -26,7 +26,6 @@ import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.entity.api.Entity;
-import org.sakaiproject.entity.api.serialize.EntityDoubleReaderHandler;
 import org.sakaiproject.entity.api.serialize.EntityParseException;
 import org.sakaiproject.entity.api.serialize.EntityReaderHandler;
 import org.w3c.dom.Document;
@@ -126,8 +125,9 @@ public class EntityReaderAdapter implements EntityReaderHandler
 	 */
 	public Entity parse(Entity container, String xml, byte[] blob) throws EntityParseException
 	{
-		if ( target.accept(blob) && (target instanceof EntityDoubleReaderHandler) ) {
-			return ((EntityDoubleReaderHandler)target).parse(container,xml,blob);			
+		if ( target.accept(blob)) {
+			log.debug("Parsing Blob "+target);
+			return target.parse(container,xml,blob);			
 		} 
 		else
 		{
@@ -135,6 +135,7 @@ public class EntityReaderAdapter implements EntityReaderHandler
 			{
 				try
 				{
+					log.debug("Parsing With SAX using "+saxEntityReader);
 					DefaultEntityHandler deh = saxEntityReader.getDefaultHandler(saxEntityReader.getServices());
 					deh.setContainer(container);
 					Xml.processString(xml, deh);

@@ -238,7 +238,7 @@ public class BaseDbDualSingleStorage  implements DbSingleStorage
 			type = "direct";
 			EntityReader de_user = (EntityReader) m_user;
 			EntityReaderHandler de_handler = de_user.getHandler();
-			return de_handler.parse(xml, blob);
+			return de_handler.parse(null, xml, blob);
 		}
 		catch (Exception e)
 		{
