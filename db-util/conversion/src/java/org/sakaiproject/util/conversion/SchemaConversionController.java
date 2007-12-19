@@ -84,7 +84,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing connection " + ex);
 			}
 
 		}
@@ -217,7 +217,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing rs " + ex);
 			}
 			try
 			{
@@ -225,7 +225,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing selectNextBatch " + ex);
 			}
 			try
 			{
@@ -233,7 +233,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing markNextBatch " + ex);
 			}
 			try
 			{
@@ -241,7 +241,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing completeNextBatch " + ex);
 			}
 			try
 			{
@@ -249,7 +249,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing selectRecord " + ex);
 			}
 			try
 			{
@@ -257,7 +257,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing selectValidateRecord " + ex);
 			}
 			try
 			{
@@ -265,7 +265,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("exception closing updateRecord " + ex);
 			}
 
 			try
@@ -275,7 +275,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
-
+				log.debug("Exception closing connection " + ex);
 			}
 
 		}
@@ -329,6 +329,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
+				log.debug("exception closing stmt " + ex);
 			}
 		}
 	}
@@ -379,6 +380,7 @@ public class SchemaConversionController
 					}
 					catch (Exception ex)
 					{
+						log.debug("exception closing smt " + ex);
 					}
 				}
 			}
@@ -448,6 +450,7 @@ public class SchemaConversionController
 				}
 				catch (Exception ex)
 				{
+					log.debug("exception closing rs " + ex);
 				}
 			}
 			if (nrecords == 0)
@@ -474,6 +477,7 @@ public class SchemaConversionController
 				}
 				catch (Exception ex)
 				{
+					log.debug("exception closing rs " + ex);
 				}
 			}
 
@@ -486,6 +490,7 @@ public class SchemaConversionController
 			}
 			catch (Exception ex)
 			{
+				log.debug("exception closing stmt " + ex);
 			}
 		}
 
