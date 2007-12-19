@@ -106,6 +106,7 @@ public class SchemaConversionController
 		try
 		{
 			connection = datasource.getConnection();
+			connection.setAutoCommit(false);
 			selectNextBatch = connection.prepareStatement(driver.getSelectNextBatch());
 			markNextBatch = connection.prepareStatement(driver.getMarkNextBatch());
 			completeNextBatch = connection
