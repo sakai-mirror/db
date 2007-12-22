@@ -111,7 +111,8 @@ public class SchemaConversionController
 			markNextBatch = connection.prepareStatement(driver.getMarkNextBatch());
 			completeNextBatch = connection
 					.prepareStatement(driver.getCompleteNextBatch());
-			selectRecord = connection.prepareStatement(driver.getSelectRecord());
+			String selectRecordStr = driver.getSelectRecord();
+			selectRecord = connection.prepareStatement(selectRecordStr);
 			selectValidateRecord = connection.prepareStatement(driver
 					.getSelectValidateRecord());
 			updateRecord = connection.prepareStatement(driver.getUpdateRecord());
@@ -148,8 +149,16 @@ public class SchemaConversionController
 				{
 					source = convert.getSource(id, rs);
 				}
+				else
+				{
+					log.warn("result-set is empty for id: " + id);
+				}
 				rs.close();
-				if (source != null)
+				if (source == null)
+				{
+					log.warn("Source is null for id: " + id);
+				}
+				else
 				{
 					updateRecord.clearParameters();
 					if (convert.convertSource(id, source, updateRecord))
