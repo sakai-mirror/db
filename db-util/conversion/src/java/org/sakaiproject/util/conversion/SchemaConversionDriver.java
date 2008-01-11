@@ -132,10 +132,9 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getDropMigrateTable()
+	public String[] getDropMigrateTable()
 	{
-		return p.getProperty(base + ".drop.migrate.table");
-
+		return this.getMultiValuedProperty(".drop.migrate.table");
 	}
 
 	/**
@@ -156,10 +155,50 @@ public class SchemaConversionDriver
 	 * 
 	 * @return
 	 */
-	public String getCreateMigrateTable()
+	public String[] getCreateMigrateTable()
 	{
-		return p.getProperty(base + ".create.migrate.table");
+		return getMultiValuedProperty(".create.migrate.table");
 	}
+
+	protected String[] getMultiValuedProperty(String key)
+    {
+		String[] sql = null;
+	    int count = 0;
+		String countStr = p.getProperty(base + key  + ".count");
+		if(countStr == null || countStr.trim().equals(""))
+		{
+			count = 0;
+		}
+		else
+		{
+			try
+			{
+				count = Integer.parseInt(countStr);
+			}
+			catch (Exception e)
+			{
+				count = 0;
+			}
+		}
+		if(count <= 0)
+		{
+			String stmt = p.getProperty(base + key);
+			if(stmt != null && ! stmt.trim().equals(""))
+			{
+				sql = new String[]{ stmt.trim() };
+			}
+		}
+		else
+		{
+			sql = new String[count];
+			for(int i = 0; i < count; i++)
+			{
+				sql[i] = new String(p.getProperty(base + key + "." + i));
+			}
+		}
+
+	    return sql;
+    }
 
 	/**
 	 * SQL to populate the migration table with ID's in the correct state.
