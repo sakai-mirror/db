@@ -151,6 +151,8 @@ public class UpgradeSchema
 				log.info("Migrating using Handler " + spec.getHandler());
 				int k = 0;
 				scc.init(tds, sch, spec);
+				log.info("UpdateRecord query == " + spec.getUpdateRecord());
+
 				while (scc.migrate(tds, sch, spec)) {
 					log.info("Completed Batch "+(k++));
 				}

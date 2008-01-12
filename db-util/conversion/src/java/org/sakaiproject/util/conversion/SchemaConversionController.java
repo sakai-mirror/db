@@ -25,6 +25,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public class SchemaConversionController
 {
+	private boolean reportErrorsInTable = false;
 
 	private static final Log log = LogFactory.getLog(SchemaConversionController.class);
 
@@ -56,6 +58,7 @@ public class SchemaConversionController
 			connection = datasource.getConnection();
 			addColumns(connection, convert, driver);
 			createRegisterTable(connection, convert, driver);
+			createErrorTable(connection, convert, driver);
 			connection.commit();
 		}
 		catch (Exception e)
@@ -91,9 +94,45 @@ public class SchemaConversionController
 
 	}
 
+	private void createErrorTable(Connection connection,
+			SchemaConversionHandler convert, SchemaConversionDriver driver) 
+	{
+		String errorReportSql = driver.getErrorReportSql();
+		String verifyErrorTable = driver.getVerifyErrorTable();
+		String createErrorTable = driver.getCreateErrorTable();
+		
+		if(createErrorTable != null && errorReportSql != null && verifyErrorTable != null)
+		{
+			try 
+			{
+				// reportErrorsInTable should be true if table already exists or is created 
+				PreparedStatement verifyTable = connection.prepareStatement(verifyErrorTable);
+				ResultSet rs = verifyTable.executeQuery();
+				boolean tableExists = rs.next();
+				
+				if(!tableExists)
+				{
+					
+					PreparedStatement createTable = connection.prepareStatement(createErrorTable);
+					createTable.execute();
+				}
+				reportErrorsInTable = true;
+			} 
+			catch (SQLException e) 
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
 	public boolean migrate(DataSource datasource, SchemaConversionHandler convert,
 			SchemaConversionDriver driver) throws SchemaConversionException
 	{
+		// issues:
+		// Data size bigger than max size for this type?
+		// Failure may cause rest of set to fail?
+		
 		boolean alldone = false;
 		Connection connection = null;
 		PreparedStatement selectNextBatch = null;
@@ -102,6 +141,7 @@ public class SchemaConversionController
 		PreparedStatement selectRecord = null;
 		PreparedStatement selectValidateRecord = null;
 		PreparedStatement updateRecord = null;
+		PreparedStatement reportError = null;
 		ResultSet rs = null;
 		try
 		{
@@ -116,6 +156,11 @@ public class SchemaConversionController
 			selectValidateRecord = connection.prepareStatement(driver
 					.getSelectValidateRecord());
 			updateRecord = connection.prepareStatement(driver.getUpdateRecord());
+			if(reportErrorsInTable)
+			{
+				reportError = connection.prepareStatement(driver.getErrorReportSql());
+			}
+			// log.info("  +++ updateRecord == " + driver.getUpdateRecord());
 
 			// 2. select x at a time
 			rs = selectNextBatch.executeQuery();
@@ -131,14 +176,17 @@ public class SchemaConversionController
 			{
 
 				markNextBatch.clearParameters();
+				markNextBatch.clearWarnings();
 				markNextBatch.setString(1, id);
 				if (markNextBatch.executeUpdate() != 1)
 				{
-					log.warn("Failed to mark id [" + id + "][" + id.length()
+					log.warn("  --> Failed to mark id [" + id + "][" + id.length()
 							+ "] for processing ");
+					insertErrorReport(reportError, id, driver.getHandler(), "Unable to mark this record for processing");
 				}
 			}
 
+			int count = 1;
 			for (String id : l)
 			{
 				selectRecord.clearParameters();
@@ -151,47 +199,72 @@ public class SchemaConversionController
 				}
 				else
 				{
-					log.warn("result-set is empty for id: " + id);
+					log.warn("  --> Result-set is empty for id: " + id + " [" + count + " of " + l.size() + "]");
+					insertErrorReport(reportError, id, driver.getHandler(), "Result set empty getting source");
 				}
 				rs.close();
 				if (source == null)
 				{
-					log.warn("Source is null for id: " + id);
+					log.warn("  --> Source is null for id: " + id + " [" + count + " of " + l.size() + "]");
+					insertErrorReport(reportError, id, driver.getHandler(), "Source null");
 				}
 				else
 				{
-					updateRecord.clearParameters();
-					if (convert.convertSource(id, source, updateRecord))
+					try
 					{
-						if (updateRecord.executeUpdate() != 1)
+						updateRecord.clearParameters();
+						if (convert.convertSource(id, source, updateRecord))
 						{
-							log.warn("Failed to update record " + id);
+							if (updateRecord.executeUpdate() == 1)
+							{
+								selectValidateRecord.clearParameters();
+								selectValidateRecord.setString(1, id);
+								rs = selectValidateRecord.executeQuery();
+								Object result = null;
+								if (rs.next())
+								{
+									result = convert.getValidateSource(id, rs);
+								}
+								
+								convert.validate(id, source, result);
+							}
+							else
+							{
+								log.warn("  --> Failed to update record " + id + " [" + count + " of " + l.size() + "]");
+								insertErrorReport(reportError, id, driver.getHandler(), "Failed to update record");
+							}
 						}
+						else
+						{
+							log.warn("  --> Did not update record " + id + " [" + count + " of " + l.size() + "]");
+							insertErrorReport(reportError, id, driver.getHandler(), "Failed to write update to db");
+						}
+						rs.close();
 					}
-					else
+					catch(Exception e)
 					{
-						log.warn("Did not update record " + id);
+						String msg = "  --> Failure converting or validating item " + id + " [" + count + " of " + l.size() + "] \n";
+						insertErrorReport(reportError, id, driver.getHandler(), "Exception while updating, converting or verifying item");
+						SQLWarning warnings = updateRecord.getWarnings();
+						while(warnings != null)
+						{
+							msg += "\t\t\t" + warnings.getErrorCode() + "\t" + warnings.getMessage() + "\n";
+							warnings = warnings.getNextWarning();
+						}
+						log.warn(msg,e);
+						updateRecord.clearWarnings();
+						updateRecord.clearParameters();
 					}
-					selectValidateRecord.clearParameters();
-					selectValidateRecord.setString(1, id);
-					rs = selectValidateRecord.executeQuery();
-					Object result = null;
-					if (rs.next())
-					{
-						result = convert.getValidateSource(id, rs);
-					}
-					rs.close();
-
-					convert.validate(id, source, result);
 
 				}
 				completeNextBatch.clearParameters();
 				completeNextBatch.setString(1, id);
 				if (completeNextBatch.executeUpdate() != 1)
 				{
-					log.warn("Failed to mark id " + id + " for processing ");
+					log.warn("  --> Failed to mark id " + id + " for processing [" + count + " of " + l.size() + "]");
+					insertErrorReport(reportError, id, driver.getHandler(), "Unable to complete next batch");
 				}
-
+				count++;
 			}
 
 			if (l.size() == 0)
@@ -209,11 +282,11 @@ public class SchemaConversionController
 			try
 			{
 				connection.rollback();
-				log.error("Rollback Sucessfull ", e);
+				log.error("  ==> Rollback Sucessful ", e);
 			}
 			catch (Exception ex)
 			{
-				log.error("Rollback Failed ", e);
+				log.error("  ==> Rollback Failed ", e);
 			}
 			throw new SchemaConversionException(
 					"Schema Conversion has been aborted due to earlier errors, please investigate ");
@@ -277,6 +350,17 @@ public class SchemaConversionController
 			{
 				log.debug("exception closing updateRecord " + ex);
 			}
+			if(reportError != null)
+			{
+				try
+				{
+					reportError.close();
+				}
+				catch (Exception ex)
+				{
+					log.debug("exception closing reportError " + ex);
+				}
+			}
 
 			try
 			{
@@ -290,6 +374,26 @@ public class SchemaConversionController
 
 		}
 		return !alldone;
+	}
+
+	private void insertErrorReport(PreparedStatement reportError, String id,
+			String handler, String description) 
+	{
+		if(reportError != null)
+		{
+			try 
+			{
+				reportError.clearParameters();
+				reportError.setString(1, id);
+				reportError.setString(2, handler);
+				reportError.setString(3, description);
+				reportError.execute();
+			} 
+			catch (SQLException e) 
+			{
+				log.warn("Unable to insert error report [" + id + " " + handler + " \"" + description + "\" " + e);
+			}
+		}	
 	}
 
 	/**
