@@ -321,4 +321,9 @@ public class SchemaConversionDriver
 		return p.getProperty(base + ".verify.error.table");
 	}
 
+	public String getEarlyTerminationSignal() 
+	{
+		return p.getProperty(base + ".early.termination.signal");
+	}
+
 }

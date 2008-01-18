@@ -143,8 +143,15 @@ public class UpgradeSchema
 		try
 		{
 			SchemaConversionController scc = new SchemaConversionController();
+			boolean earlyTerminationRequested = false;
 			for (SchemaConversionDriver spec : sequence)
 			{
+				earlyTerminationRequested = earlyTerminationSignalled(spec.getEarlyTerminationSignal());
+				if(earlyTerminationRequested)
+				{
+					log.info("Early termination requested");
+					break;
+				}
 				Class handlerClass = Class.forName(spec.getHandlerClass());
 				SchemaConversionHandler sch = (SchemaConversionHandler) handlerClass
 						.newInstance();
@@ -155,6 +162,16 @@ public class UpgradeSchema
 
 				while (scc.migrate(tds, sch, spec)) {
 					log.info("Completed Batch "+(k++));
+					earlyTerminationRequested = earlyTerminationSignalled(spec.getEarlyTerminationSignal());
+					if(earlyTerminationRequested)
+					{
+						log.info("Early termination requested");
+						break;
+					}
+				}
+				if(earlyTerminationRequested)
+				{
+					break;
 				}
 				log.info("Done Migrating using Handler " + spec.getHandler());
 			}
@@ -164,5 +181,17 @@ public class UpgradeSchema
 		{
 			log.info("Failed ", ex);
 		}
+	}
+
+	private boolean earlyTerminationSignalled(String earlyEndSignal)
+	{
+		boolean endNow = false;
+		if(earlyEndSignal != null)
+		{
+			File file = new File(earlyEndSignal);
+			log.info("testing for early termination: " + file.getAbsolutePath());
+			endNow = file.exists();
+		}
+		return endNow;
 	}
 }
