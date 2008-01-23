@@ -425,6 +425,7 @@ public class SchemaConversionController
 					{
 						try
 						{
+							log.info("Cleaning up: " + statement);
 							stmt.execute(statement);
 						}
 						catch(Exception e)
@@ -433,6 +434,7 @@ public class SchemaConversionController
 						}
 					}
 				}
+				log.info("Done cleaning up conversion step");
 			}
 		}
 		finally
@@ -570,7 +572,16 @@ public class SchemaConversionController
 			if (nrecords == 0)
 			{
 				String sql = driver.getPopulateMigrateTable();
-				stmt.executeUpdate(sql);
+				if(sql == null)
+				{
+					log.info("No SQL to populate register table");					
+				}
+				else
+				{
+					log.info("Populating register table: " + sql);
+					int count = stmt.executeUpdate(sql);
+					log.info("Inserted " + count + " rows into register table");
+				}
 			}
 
 			try
@@ -582,6 +593,11 @@ public class SchemaConversionController
 				{
 					nrecords = rs.getLong(1);
 				}
+				log.info("Counted " + nrecords + " rows in register table");
+			}
+			catch(Exception e)
+			{
+				log.debug("Unable to verify number of rows in register table");
 			}
 			finally
 			{

@@ -52,7 +52,7 @@ public class UpgradeSchema
 		{
 			configFile = argv[0];
 		}
-		System.out.println("configFile=" + configFile);
+		log.info("configFile=" + configFile);
 		try
 		{
 			cc.convert(configFile);
@@ -69,7 +69,6 @@ public class UpgradeSchema
 	 */
 	private void convert(String config) throws Exception
 	{
-
 		DriverAdapterCPDS cpds = new DriverAdapterCPDS();
 
 		Properties p = new Properties();
@@ -189,7 +188,7 @@ public class UpgradeSchema
 		if(earlyEndSignal != null)
 		{
 			File file = new File(earlyEndSignal);
-			log.info("testing for early termination: " + file.getAbsolutePath());
+			log.info("Checking for early termination: " + file.getAbsolutePath());
 			endNow = file.exists();
 		}
 		return endNow;
