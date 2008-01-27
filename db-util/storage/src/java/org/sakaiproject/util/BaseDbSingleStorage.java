@@ -281,6 +281,9 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return entry;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#isEmpty()
+	 */
 	public boolean isEmpty()
 	{
 		// count
@@ -288,6 +291,9 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return (count == 0);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#getAllResources()
+	 */
 	public List getAllResources()
 	{
 		List all = new Vector();
@@ -311,6 +317,9 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return all;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#getAllResources(int, int)
+	 */
 	public List getAllResources(int first, int last)
 	{
 		String sql = singleStorageSql.getXmlSql(m_resourceTableIdField, m_resourceTableName, first, last);
@@ -331,6 +340,9 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return rv;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#countAllResources()
+	 */
 	public int countAllResources()
 	{
 		List all = new Vector();
@@ -359,6 +371,9 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		return ((Integer) results.get(0)).intValue();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.sakaiproject.util.DbSingleStorage#countSelectedResourcesWhere(java.lang.String)
+	 */
 	public int countSelectedResourcesWhere(String sqlWhere)
 	{
 		List all = new Vector();
@@ -573,6 +588,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		fields[0] = caseId(entry.getId());
 		fields[fields.length - 1] = xml;
 
+		System.out.println(this + ".putResource(" + id + ") \n\n" + xml + "\n\n");
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
 

@@ -135,6 +135,7 @@ public class EntityReaderAdapter implements EntityReaderHandler
 			{
 				try
 				{
+					log.debug("Parsing With SAX using "+saxEntityReader);
 					DefaultEntityHandler deh = saxEntityReader.getDefaultHandler(saxEntityReader.getServices());
 					deh.setContainer(container);
 					Xml.processString(xml, deh);
