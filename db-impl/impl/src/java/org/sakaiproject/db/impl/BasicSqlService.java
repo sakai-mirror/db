@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007, 2008 The Sakai Foundation.
  *
  * Licensed under the Educational Community License, Version 1.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -566,6 +566,11 @@ public abstract class BasicSqlService implements SqlService
 					else
 					{
 						Object obj = reader.readSqlResultRecord(result);
+						// Reader returns itself to indicate that it is finished
+						if ( obj instanceof SqlReader ) {
+							System.out.println("Breaking Read Loop");
+							break;
+						}
 						if (obj != null) rv.add(obj);
 					}
 				}
