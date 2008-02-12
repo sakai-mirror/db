@@ -37,5 +37,6 @@ public interface SqlReader
 	 *        The SQL ResultSet, set to the proper record.
 	 * @return The object read.
 	 */
-	Object readSqlResultRecord(ResultSet result);
+        Object readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException;
+
 }

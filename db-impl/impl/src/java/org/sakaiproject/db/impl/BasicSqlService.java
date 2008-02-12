@@ -48,6 +48,7 @@ import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.db.api.SqlReader;
+import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.db.api.SqlServiceDeadlockException;
 import org.sakaiproject.db.api.SqlServiceUniqueViolationException;
@@ -541,8 +542,18 @@ public abstract class BasicSqlService implements SqlService
 					}
 					else
 					{
-						Object obj = reader.readSqlResultRecord(result);
-						if (obj != null) rv.add(obj);
+                                                try
+                                                {
+                                                        Object obj = reader.readSqlResultRecord(result);
+                                                        if (obj != null) rv.add(obj);
+                                                }
+                                                catch (SqlReaderFinishedException e)
+                                                {
+							// TODO: Remove this after testing - Chuck
+                                                        System.out.println("Breaking the loop with catch");
+                                                        break;
+                                                }
+
 					}
 				}
 				catch (Throwable t)
