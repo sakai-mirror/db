@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007, 2008 The Sakai Foundation.
  *
  * Licensed under the Educational Community License, Version 1.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.sakaiproject.db.api.SqlReader;
+import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.db.api.SqlServiceDeadlockException;
 import org.sakaiproject.db.api.SqlServiceUniqueViolationException;
@@ -565,8 +566,15 @@ public abstract class BasicSqlService implements SqlService
 					}
 					else
 					{
-						Object obj = reader.readSqlResultRecord(result);
-						if (obj != null) rv.add(obj);
+						try
+						{
+							Object obj = reader.readSqlResultRecord(result);
+							if (obj != null) rv.add(obj);
+						}
+						catch (SqlReaderFinishedException e)
+						{
+							break;
+						}
 					}
 				}
 				catch (Throwable t)
