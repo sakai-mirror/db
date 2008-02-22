@@ -31,7 +31,8 @@ import org.sakaiproject.springframework.orm.hibernate.AdditionalHibernateMapping
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-public class AdditionalHibernateMappingsImpl implements AdditionalHibernateMappings, Comparable
+public class AdditionalHibernateMappingsImpl implements
+		AdditionalHibernateMappings, Comparable<AdditionalHibernateMappings>
 {
 	protected final transient Log logger = LogFactory.getLog(getClass());
 
@@ -65,9 +66,9 @@ public class AdditionalHibernateMappingsImpl implements AdditionalHibernateMappi
 		}
 	}
 
-	public int compareTo(Object o)
+	public int compareTo(AdditionalHibernateMappings o)
 	{
-		return getSortOrder().compareTo(((AdditionalHibernateMappingsImpl) o).getSortOrder());
+		return getSortOrder().compareTo(o.getSortOrder()); 
 	}
 
 	public Integer getSortOrder()
