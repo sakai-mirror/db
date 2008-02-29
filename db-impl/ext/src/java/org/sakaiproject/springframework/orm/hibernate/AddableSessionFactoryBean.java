@@ -36,7 +36,6 @@ import org.hibernate.dialect.function.ClassicSumFunction;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactoryUtils; 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.orm.hibernate3.LocalSessionFactoryBean;
@@ -59,11 +58,11 @@ public class AddableSessionFactoryBean extends LocalSessionFactoryBean implement
 	{
 		super.postProcessConfiguration(config);
 
-		String[] names = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(applicationContext, AdditionalHibernateMappings.class, false, false); 
+		String[] names = applicationContext.getBeanNamesForType(AdditionalHibernateMappings.class, false, false);
 
 		try
 		{
-			List beans = new ArrayList(names.length);
+			List beans = new ArrayList();
 			for (int i = 0; i < names.length; i++)
 			{
 				AdditionalHibernateMappings mappings = (AdditionalHibernateMappings) applicationContext.getBean(names[i]);
