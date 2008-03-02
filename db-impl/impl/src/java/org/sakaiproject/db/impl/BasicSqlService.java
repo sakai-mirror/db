@@ -549,8 +549,6 @@ public abstract class BasicSqlService implements SqlService
                                                 }
                                                 catch (SqlReaderFinishedException e)
                                                 {
-							// TODO: Remove this after testing - Chuck
-                                                        System.out.println("Breaking the loop with catch");
                                                         break;
                                                 }
 
