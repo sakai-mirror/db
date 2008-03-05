@@ -3,18 +3,18 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2005, 2006 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ * Copyright (c) 2005, 2006, 2007 The Sakai Foundation.
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
@@ -61,7 +61,8 @@ import org.w3c.dom.Element;
  * </ul>
  * </p>
  * <br />
- * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL statement text; <br />
+ * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL
+ * statement text; <br />
  * rather, Unicode values should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
@@ -116,12 +117,13 @@ public class BaseDbDoubleStorage
 	protected StorageUser m_user = null;
 
 	/**
-	 * Locks, keyed by reference, holding Connections (or, if locks are done locally, holding an Edit). Note: keying by reference allows botu container and resource locks to be stored, the reference distinguishes them.
+	 * Locks, keyed by reference, holding Connections (or, if locks are done locally, holding an Edit). Note: keying by reference allows botu
+	 * container and resource locks to be stored, the reference distinguishes them.
 	 */
 	protected Hashtable m_locks = null;
 
 	/** For container, the extra field is (no longer used) NEXT_ID */
-	protected static final String[] M_containerExtraFields = { "NEXT_ID" };
+	protected static final String[] M_containerExtraFields = {"NEXT_ID"};
 
 	/** Injected (by constructor) SqlService. */
 	protected SqlService m_sql = null;
@@ -185,11 +187,10 @@ public class BaseDbDoubleStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbDoubleStorage(String containerTableName, String containerTableIdField, String resourceTableName,
-			String resourceTableIdField, String resourceTableContainerIdField, String resourceTableOrderField,
-			String resourceTableOwnerField, String resourceTableDraftField, String resourceTablePubViewField,
-			String[] resourceTableOtherFields, boolean locksInDb, String containerEntryName, String resourceEntryName,
-			StorageUser user, SqlService sqlService)
+	public BaseDbDoubleStorage(String containerTableName, String containerTableIdField, String resourceTableName, String resourceTableIdField,
+			String resourceTableContainerIdField, String resourceTableOrderField, String resourceTableOwnerField, String resourceTableDraftField,
+			String resourceTablePubViewField, String[] resourceTableOtherFields, boolean locksInDb, String containerEntryName,
+			String resourceEntryName, StorageUser user, SqlService sqlService)
 	{
 		m_containerTableName = containerTableName;
 		m_containerTableIdField = containerTableIdField;
@@ -252,7 +253,7 @@ public class BaseDbDoubleStorage
 			} else {
 			// read the xml
 			Document doc = Xml.readDocumentFromString(xml);
-
+	
 			// verify the root element
 			Element root = doc.getDocumentElement();
 			if (!root.getTagName().equals(m_containerEntryTagName))
@@ -260,7 +261,7 @@ public class BaseDbDoubleStorage
 				M_log.warn("readContainer(): not = " + m_containerEntryTagName + " : " + root.getTagName());
 				return null;
 			}
-
+	
 			// re-create a resource
 			Entity entry = m_user.newContainer(root);
 				return entry;
@@ -422,7 +423,6 @@ public class BaseDbDoubleStorage
 				throw new UnsupportedOperationException("Record locking only available when configured with Oracle database");
 			}
 		}
-
 		// if the locks are in a separate table in the db
 		else if (m_locksAreInTable)
 		{
@@ -478,7 +478,6 @@ public class BaseDbDoubleStorage
 				m_locks.put(entry.getReference(), edit);
 			}
 		}
-
 		return edit;
 	}
 
@@ -1145,7 +1144,7 @@ public class BaseDbDoubleStorage
 	protected String valuesParams(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(" ?,");
@@ -1163,7 +1162,7 @@ public class BaseDbDoubleStorage
 	protected String updateSet(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(fields[i] + " = ?,");
@@ -1186,7 +1185,7 @@ public class BaseDbDoubleStorage
 	 */
 	protected String insertFields(String before1, String before2, String[] fields, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 
 		buf.append(before1);
@@ -1238,7 +1237,7 @@ public class BaseDbDoubleStorage
 			filterAfter = true;
 		}
 
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		int numFields = 1;
 
 		// start the outer statement, later finished with a limiting clause

@@ -3,18 +3,18 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
- * 
- * Licensed under the Educational Community License, Version 1.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
+ * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
+ *
+ * Licensed under the Educational Community License, Version 1.0 (the "License");
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.opensource.org/licenses/ecl1.php
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License.
  *
  **********************************************************************************/
@@ -53,8 +53,8 @@ import org.w3c.dom.Element;
  * Edit into something more type specific to the service.
  * </p>
  * <p>
- * Note: the methods here are all "id" based, with the following assumptions: <br /> - just the Resource Id field is enough to distinguish one Resource from another <br /> - a resource's reference is based on no more than the resource id <br /> - a
- * resource's id cannot change.
+ * Note: the methods here are all "id" based, with the following assumptions: <br /> - just the Resource Id field is enough to distinguish one
+ * Resource from another <br /> - a resource's reference is based on no more than the resource id <br /> - a resource's id cannot change.
  * </p>
  * <p>
  * In order to handle Unicode characters properly, the SQL statements executed by this class <br />
@@ -153,8 +153,8 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbSingleStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableOtherFields,
-			boolean locksInDb, String resourceEntryName, StorageUser user, SqlService sqlService)
+	public BaseDbSingleStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableOtherFields, boolean locksInDb,
+			String resourceEntryName, StorageUser user, SqlService sqlService)
 	{
 		m_resourceTableName = resourceTableName;
 		m_resourceTableIdField = resourceTableIdField;
@@ -588,7 +588,6 @@ public class BaseDbSingleStorage implements DbSingleStorage
 		fields[0] = caseId(entry.getId());
 		fields[fields.length - 1] = xml;
 
-		System.out.println(this + ".putResource(" + id + ") \n\n" + xml + "\n\n");
 		// process the insert
 		boolean ok = m_sql.dbWrite(statement, fields);
 
@@ -653,7 +652,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	/** Construct the SQL statement */
 	protected String insertDeleteFields(String before, String[] fields, String uuid, String date, String userId, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 		buf.append(before);
 		buf.append(",");
@@ -1017,7 +1016,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	protected String valuesParams(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(" ?,");
@@ -1035,7 +1034,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	protected String updateSet(String[] fields)
 	{
 		if ((fields == null) || (fields.length == 0)) return "";
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < fields.length; i++)
 		{
 			buf.append(fields[i] + " = ?,");
@@ -1056,7 +1055,7 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	 */
 	protected String insertFields(String before, String[] fields, String after)
 	{
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append(" (");
 
 		buf.append(before);
@@ -1106,7 +1105,8 @@ public class BaseDbSingleStorage implements DbSingleStorage
 	}
 
 	/**
-	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
+	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code
+	 * ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
 	 * 
 	 * @param recordId
 	 * @return The record ID to use internally in the database
