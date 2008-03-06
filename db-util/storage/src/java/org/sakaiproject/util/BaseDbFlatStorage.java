@@ -3,24 +3,25 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
- *
- * Licensed under the Educational Community License, Version 1.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
+ * 
+ * Licensed under the Educational Community License, Version 1.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.opensource.org/licenses/ecl1.php
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
+ * 
+ * Unless required by applicable law or agreed to in writing, software 
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and 
  * limitations under the License.
  *
  **********************************************************************************/
 
 package org.sakaiproject.util;
 
+// import
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -57,8 +58,7 @@ import org.sakaiproject.time.cover.TimeService;
  * <li> a resource's id cannot change</li>
  * </ul>
  * <br />
- * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL
- * statement text; <br />
+ * In order to handle Unicode characters properly, the SQL statements executed by this class should not embed Unicode characters into the SQL statement text; <br />
  * rather, Unicode values should be inserted as fields in a PreparedStatement. Databases handle Unicode better in fields.
  * </p>
  */
@@ -91,10 +91,7 @@ public class BaseDbFlatStorage
 	/** The full set of fields in the table for insert - just field (not counting a dbid field). */
 	protected String[] m_resourceTableInsertFields = null;
 
-	/**
-	 * The full set of value expressions for an insert - either null or ? or an expression - to match m_resourceTableInsertFields (not counting a dbid
-	 * field).
-	 */
+	/** The full set of value expressions for an insert - either null or ? or an expression - to match m_resourceTableInsertFields (not counting a dbid field). */
 	protected String[] m_resourceTableInsertValues = null;
 
 	/** The extra db field for an integer 'db' id - auto-written on insert only. */
@@ -167,8 +164,8 @@ public class BaseDbFlatStorage
 	 * @param sqlService
 	 *        The SqlService.
 	 */
-	public BaseDbFlatStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableFields, String propertyTableName,
-			boolean locksInTable, SqlReader reader, SqlService sqlService)
+	public BaseDbFlatStorage(String resourceTableName, String resourceTableIdField, String[] resourceTableFields,
+			String propertyTableName, boolean locksInTable, SqlReader reader, SqlService sqlService)
 	{
 		m_resourceTableName = resourceTableName;
 		m_resourceTableIdField = resourceTableIdField;
@@ -377,6 +374,7 @@ public class BaseDbFlatStorage
 			sql = flatStorageSql.getSelectFieldsSql1(m_resourceTableName, fieldList(m_resourceTableReadFields, null), null,
 					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1));
 		}
+
 		List rv = m_sql.dbRead(sql, fields, m_reader);
 
 		return rv;
@@ -590,6 +588,7 @@ public class BaseDbFlatStorage
 					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
 			fields = values;
 		}
+
 		List rv = m_sql.dbRead(sql, fields, m_reader);
 
 		return rv;
@@ -704,6 +703,7 @@ public class BaseDbFlatStorage
 		// process the insert
 		boolean ok = m_sql.dbWrite(conn, statement, fields);
 		return ok;
+
 	} // putResource
 
 	/**
@@ -915,7 +915,7 @@ public class BaseDbFlatStorage
 			}
 		}, "removeResource:" + edit.getId());
 	}
-
+	
 	/**
 	 * Transaction code to remove a resource.
 	 */
@@ -1143,7 +1143,8 @@ public class BaseDbFlatStorage
 		}
 	}
 
-	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId, ResourceProperties props)
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
+			ResourceProperties props)
 	{
 		boolean deleteFirst = true;
 		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
@@ -1169,7 +1170,7 @@ public class BaseDbFlatStorage
 			{
 				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
-		}, "writeProperties:" + id);
+		}, "writeProperties:"+id);
 	}
 
 	/**
@@ -1178,8 +1179,8 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId, ResourceProperties props,
-			boolean deleteFirst)
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
+			ResourceProperties props, boolean deleteFirst)
 	{
 		String statement;
 		Object fields[];
@@ -1229,7 +1230,8 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId, Properties props)
+	public void writeProperties(String table, String idField, Object id, String extraIdField, String extraId,
+			Properties props)
 	{
 		boolean deleteFirst = true;
 		writeProperties(table, idField, id, extraIdField, extraId, props, deleteFirst);
@@ -1255,7 +1257,7 @@ public class BaseDbFlatStorage
 			{
 				writePropertiesTx(table, idField, id, extraIdField, extraId, props, deleteFirst);
 			}
-		}, "writeProperties:" + id);
+		}, "writeProperties:"+id);
 
 	}
 
@@ -1265,8 +1267,8 @@ public class BaseDbFlatStorage
 	 * @param r
 	 *        The resource for which properties are to be written.
 	 */
-	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId, Properties props,
-			boolean deleteFirst)
+	protected void writePropertiesTx(String table, String idField, Object id, String extraIdField, String extraId,
+			Properties props, boolean deleteFirst)
 	{
 		String statement;
 		Object[] fields;
@@ -1336,8 +1338,7 @@ public class BaseDbFlatStorage
 	}
 
 	/**
-	 * Form a string of n question marks with commas, for sql value statements, one for each item in the values array, or an empty string if null. If
-	 * the fields are "(...)" values, use these instead of ?.
+	 * Form a string of n question marks with commas, for sql value statements, one for each item in the values array, or an empty string if null. If the fields are "(...)" values, use these instead of ?.
 	 * 
 	 * @param values
 	 *        The values to be inserted into the sql statement.
@@ -1345,7 +1346,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String valuesParams(String[] fields, String dbidField)
 	{
-		StringBuilder buf = new StringBuilder();
+		StringBuffer buf = new StringBuffer();
 		for (int i = 0; i < fields.length - 1; i++)
 		{
 			if (fields[i].startsWith("("))
@@ -1383,7 +1384,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String updateSet(String[] fields)
 	{
-		StringBuilder buf = new StringBuilder();
+		StringBuffer buf = new StringBuffer();
 
 		// we assume the first field is the primary key, and we don't want to include that in the update, so start at 1
 		for (int i = 1; i < fields.length; i++)
@@ -1431,7 +1432,7 @@ public class BaseDbFlatStorage
 	 */
 	protected String fieldList(String[] fields, String dbidField)
 	{
-		StringBuilder buf = new StringBuilder();
+		StringBuffer buf = new StringBuffer();
 
 		for (int i = 0; i < fields.length - 1; i++)
 		{
@@ -1448,6 +1449,7 @@ public class BaseDbFlatStorage
 				buf.append("," + qualifyField(dbidField, m_resourceTableName));
 			}
 		}
+
 		return buf.toString();
 	}
 
@@ -1502,8 +1504,7 @@ public class BaseDbFlatStorage
 	}
 
 	/**
-	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code
-	 * ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
+	 * Return a record ID to use internally in the database. This is needed for databases (MySQL) that have limits on key lengths. The hash code ensures that the record ID will be unique, even if the DB only considers a prefix of a very long record ID.
 	 * 
 	 * @param recordId
 	 * @return The record ID to use internally in the database

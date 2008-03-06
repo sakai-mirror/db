@@ -69,7 +69,6 @@ public class UpgradeSchema
 	 */
 	private void convert(String config) throws Exception
 	{
-
 		DriverAdapterCPDS cpds = new DriverAdapterCPDS();
 
 		Properties p = new Properties();

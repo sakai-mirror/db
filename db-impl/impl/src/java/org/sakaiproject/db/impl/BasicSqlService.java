@@ -4,17 +4,17 @@
  ***********************************************************************************
  *
  * Copyright (c) 2003, 2004, 2005, 2006, 2007 The Sakai Foundation.
- *
- * Licensed under the Educational Community License, Version 1.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * 
+ * Licensed under the Educational Community License, Version 1.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.opensource.org/licenses/ecl1.php
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
+ * 
+ * Unless required by applicable law or agreed to in writing, software 
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and 
  * limitations under the License.
  *
  **********************************************************************************/
@@ -80,23 +80,23 @@ public abstract class BasicSqlService implements SqlService
 	/** Should we do a commit after a single statement read? */
 	protected boolean m_commitAfterRead = false;
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Dependencies
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * @return the UsageSessionService collaborator.
 	 */
 	protected abstract UsageSessionService usageSessionService();
-
+	
 	/**
 	 * @return the ThreadLocalManager collaborator.
 	 */
 	protected abstract ThreadLocalManager threadLocalManager();
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Configuration
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * Configuration: should we do a commit after each single SQL read?
@@ -217,7 +217,7 @@ public abstract class BasicSqlService implements SqlService
 
 	/*************************************************************************************************************************************************
 	 * Init and Destroy
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * Final initialization, once all dependencies are set.
@@ -243,9 +243,9 @@ public abstract class BasicSqlService implements SqlService
 		LOG.info("destroy()");
 	}
 
-	/*************************************************************************************************************************************************
+	/**********************************************************************************************************************************************************************************************************************************************************
 	 * Work interface methods: org.sakaiproject.sql.SqlService
-	 ************************************************************************************************************************************************/
+	 *********************************************************************************************************************************************************************************************************************************************************/
 
 	/**
 	 * {@inheritDoc}
@@ -292,8 +292,7 @@ public abstract class BasicSqlService implements SqlService
 	 */
 	public boolean transact(Runnable callback, String tag)
 	{
-		// if we are already in a transaction, stay in it (don't start a new one), and just run the callback (no retries, let the outside transaction
-		// code handle that)
+		// if we are already in a transaction, stay in it (don't start a new one), and just run the callback (no retries, let the outside transaction code handle that)
 		if (threadLocalManager().get(TRANSACTION_CONNECTION) != null)
 		{
 			callback.run();
@@ -307,7 +306,7 @@ public abstract class BasicSqlService implements SqlService
 			{
 				// make a little fuss
 				LOG.warn("transact: deadlock: retrying (" + i + " / " + m_deadlockRetries + "): " + tag);
-
+				
 				// do a little wait, longer for each retry
 				// TODO: randomize?
 				try
@@ -326,14 +325,14 @@ public abstract class BasicSqlService implements SqlService
 				connection = borrowConnection();
 				wasCommit = connection.getAutoCommit();
 				connection.setAutoCommit(false);
-
+				
 				// store the connection in the thread
 				threadLocalManager().set(TRANSACTION_CONNECTION, connection);
 
 				callback.run();
-
+				
 				connection.commit();
-
+				
 				return true;
 			}
 			catch (SqlServiceDeadlockException e)
@@ -415,7 +414,7 @@ public abstract class BasicSqlService implements SqlService
 				}
 			}
 		}
-
+		
 		return false;
 	}
 
@@ -448,8 +447,8 @@ public abstract class BasicSqlService implements SqlService
 	}
 
 	/**
-	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for
-	 * each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a String, will be placed in the list.
+	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
+	 * String, will be placed in the list.
 	 * 
 	 * @param sql
 	 *        The sql statement.
@@ -470,8 +469,8 @@ public abstract class BasicSqlService implements SqlService
 	}
 
 	/**
-	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for
-	 * each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a String, will be placed in the list.
+	 * Process a query, filling in with fields, and return the results as a List, one per record read. If a reader is provided, it will be called for each record to prepare the Object placed into the List. Otherwise, the first field of each record, as a
+	 * String, will be placed in the list.
 	 * 
 	 * @param callerConn
 	 *        The db connection object to use (if not null).
@@ -490,10 +489,11 @@ public abstract class BasicSqlService implements SqlService
 		{
 			callerConn = (Connection) threadLocalManager().get(TRANSACTION_CONNECTION);
 		}
-
+		
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbRead(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", SqlReader " + reader + ")");
+			LOG.debug("dbRead(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", SqlReader " + reader
+					+ ")");
 		}
 
 		// for DEBUG
@@ -572,7 +572,8 @@ public abstract class BasicSqlService implements SqlService
 				}
 				catch (Throwable t)
 				{
-					LOG.warn("Sql.dbRead: unable to read a result from sql: " + sql + debugFields(fields) + " row: " + result.getRow());
+					LOG.warn("Sql.dbRead: unable to read a result from sql: " + sql + debugFields(fields) + " row: "
+							+ result.getRow());
 				}
 			}
 		}
@@ -610,7 +611,8 @@ public abstract class BasicSqlService implements SqlService
 			}
 		}
 
-		if (m_showSql) debug("Sql.dbRead: time: " + connectionTime + " / " + stmtTime + " / " + resultsTime + " #: " + count, sql, fields);
+		if (m_showSql)
+			debug("Sql.dbRead: time: " + connectionTime + " / " + stmtTime + " / " + resultsTime + " #: " + count, sql, fields);
 
 		return rv;
 	}
@@ -657,7 +659,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbReadBinary(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", byte[] " + value + ")");
+			LOG.debug("dbReadBinary(Connection " + callerConn + ", String " + sql + ", Object[] " + fields + ", byte[] " + value
+					+ ")");
 		}
 
 		// for DEBUG
@@ -740,12 +743,12 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 	}
 
 	/**
-	 * Read a single field / record from the db, returning a stream on the result record / field. The stream holds the conection open - so it must be
-	 * closed or finalized quickly!
+	 * Read a single field / record from the db, returning a stream on the result record / field. The stream holds the conection open - so it must be closed or finalized quickly!
 	 * 
 	 * @param sql
 	 *        The sql statement.
@@ -859,7 +862,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql read binary: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 
 		return rv;
 	}
@@ -922,7 +926,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbWriteBinary(String " + sql + ", Object[] " + fields + ", byte[] " + var + ", int " + offset + ", int " + len + ")");
+			LOG.debug("dbWriteBinary(String " + sql + ", Object[] " + fields + ", byte[] " + var + ", int " + offset + ", int "
+					+ len + ")");
 		}
 
 		// for DEBUG
@@ -1013,7 +1018,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql write binary: len: " + len + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, fields);
+			debug("sql write binary: len: " + len + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start),
+					sql, fields);
 
 		return true;
 	}
@@ -1113,8 +1119,7 @@ public abstract class BasicSqlService implements SqlService
 	 *        The connection to use.
 	 * @param failQuiet
 	 *        If true, don't log errors from statement failure
-	 * @return true if successful, false if not due to unique constraint violation or duplicate key (i.e. the record already exists) OR we are
-	 *         instructed to fail quiet.
+	 * @return true if successful, false if not due to unique constraint violation or duplicate key (i.e. the record already exists) OR we are instructed to fail quiet.
 	 */
 	protected boolean dbWrite(String sql, Object[] fields, String lastField, Connection callerConnection, boolean failQuiet)
 	{
@@ -1126,8 +1131,8 @@ public abstract class BasicSqlService implements SqlService
 
 		if (LOG.isDebugEnabled())
 		{
-			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", String " + lastField + ", Connection " + callerConnection + ", boolean "
-					+ failQuiet + ")");
+			LOG.debug("dbWrite(String " + sql + ", Object[] " + fields + ", String " + lastField + ", Connection "
+					+ callerConnection + ", boolean " + failQuiet + ")");
 		}
 
 		// for DEBUG
@@ -1218,7 +1223,8 @@ public abstract class BasicSqlService implements SqlService
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbWrite(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
+						+ e);
 			}
 
 			// if asked to fail quietly, just return false if we find this error.
@@ -1279,8 +1285,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("Sql.dbWrite(): len: " + ((lastField != null) ? "" + lastField.length() : "null") + "  time: " + connectionTime + " /  "
-					+ (System.currentTimeMillis() - start), sql, fields);
+			debug("Sql.dbWrite(): len: " + ((lastField != null) ? "" + lastField.length() : "null") + "  time: " + connectionTime
+					+ " /  " + (System.currentTimeMillis() - start), sql, fields);
 
 		return true;
 	}
@@ -1429,7 +1435,8 @@ public abstract class BasicSqlService implements SqlService
 
 			if (m_showSql)
 			{
-				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e);
+				LOG.warn("Sql.dbInsert(): error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
+						+ " " + e);
 			}
 
 			if (recordAlreadyExists) return null;
@@ -1438,16 +1445,14 @@ public abstract class BasicSqlService implements SqlService
 			if (("mysql".equals(m_vendor)) && (e.getErrorCode() == 1213))
 			{
 				// just a little fuss
-				LOG.warn("Sql.dbInsert(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " "
-						+ e.toString());
+				LOG.warn("Sql.dbInsert(): deadlock: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
 				throw new SqlServiceDeadlockException(e);
 			}
 
 			else if (recordAlreadyExists)
 			{
 				// just a little fuss
-				LOG.warn("Sql.dbInsert(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields)
-						+ " " + e.toString());
+				LOG.warn("Sql.dbInsert(): unique violation: error code: " + e.getErrorCode() + " sql: " + sql + " binds: " + debugFields(fields) + " " + e.toString());
 				throw new SqlServiceUniqueViolationException(e);
 			}
 
@@ -1491,7 +1496,8 @@ public abstract class BasicSqlService implements SqlService
 			}
 		}
 
-		if (m_showSql) debug("Sql.dbWrite(): len: " + "  time: " + connectionTime + " /  " + (System.currentTimeMillis() - start), sql, fields);
+		if (m_showSql)
+			debug("Sql.dbWrite(): len: " + "  time: " + connectionTime + " /  " + (System.currentTimeMillis() - start), sql, fields);
 
 		return rv;
 	}
@@ -1604,7 +1610,8 @@ public abstract class BasicSqlService implements SqlService
 		}
 
 		if (m_showSql)
-			debug("sql dbReadBlobAndUpdate: len: " + lenRead + "  time: " + connectionTime + " / " + (System.currentTimeMillis() - start), sql, null);
+			debug("sql dbReadBlobAndUpdate: len: " + lenRead + "  time: " + connectionTime + " / "
+					+ (System.currentTimeMillis() - start), sql, null);
 	}
 
 	/**
@@ -2162,8 +2169,8 @@ public abstract class BasicSqlService implements SqlService
 		{
 			if (SWC_LOG.isDebugEnabled())
 			{
-				SWC_LOG.debug("new StreamWithConnection(InputStream " + stream + ", ResultSet " + result + ", PreparedStatement " + pstmt
-						+ ", Connection " + conn + ")");
+				SWC_LOG.debug("new StreamWithConnection(InputStream " + stream + ", ResultSet " + result + ", PreparedStatement "
+						+ pstmt + ", Connection " + conn + ")");
 			}
 
 			m_conn = conn;

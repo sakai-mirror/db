@@ -202,7 +202,7 @@
 		<property name="dataSource">
 			<ref local="javax.sql.DataSource" />
 		</property>
-
+		
 		<property name="hibernateProperties">
 			<props>
 				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
@@ -223,7 +223,7 @@
 		<property name="schemaUpdate">
 			<value>${auto.ddl}</value>
 		</property>
-
+	
 	</bean>
 
 	<!--  The "Global" Hibernate Session Factory -->
