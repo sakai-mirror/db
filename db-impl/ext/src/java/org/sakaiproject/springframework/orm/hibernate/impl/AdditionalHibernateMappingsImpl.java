@@ -60,7 +60,7 @@ public class AdditionalHibernateMappingsImpl implements AdditionalHibernateMappi
 			try {
 				config.addInputStream(this.mappingLocations[i].getInputStream());
 			} catch (MappingException me) {
-				throw new MappingException("Failed to load "+ this.mappingLocations[i], me.getCause());
+				throw new MappingException("Failed to load "+ this.mappingLocations[i], me);
 			}
 		}
 	}
