@@ -3,7 +3,7 @@
  * $Id$
  ***********************************************************************************
  *
- * Copyright (c) 2003, 2004, 2005, 2006 The Sakai Foundation.
+ * Copyright (c) 2003, 2004, 2005, 2006, 2008 The Sakai Foundation.
  * 
  * Licensed under the Educational Community License, Version 1.0 (the "License"); 
  * you may not use this file except in compliance with the License. 
@@ -28,7 +28,7 @@ import java.sql.ResultSet;
  * SqlReader is the Interface for objects that can read stuff from a SQL request ResultSet.
  * </p>
  */
-public interface SqlReader
+public interface SqlReader 
 {
 	/**
 	 * Read fields from this result set, creating one object which is returned.
@@ -37,5 +37,5 @@ public interface SqlReader
 	 *        The SQL ResultSet, set to the proper record.
 	 * @return The object read.
 	 */
-	Object readSqlResultRecord(ResultSet result);
+	Object readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException;
 }
