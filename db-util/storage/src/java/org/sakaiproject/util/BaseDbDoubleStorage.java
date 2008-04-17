@@ -33,6 +33,8 @@ import java.util.Vector;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.sakaiproject.javax.Filter;
+import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.api.Edit;
@@ -1210,6 +1212,46 @@ public class BaseDbDoubleStorage
 		buf.append(")");
 
 		return buf.toString();
+	}
+
+	/**
+	 * Count messages 
+	 * @param container
+	 *        The container for this resource.
+	 * @return message count 
+	 */
+	public int getCount(final Entity container)
+	{
+		return -1;  // Not implemented;
+	}
+
+	/**
+	 * Count messages with a Filter
+	 * @param container
+	 *        The container for this resource.
+	 * @param filter
+	 *        filter the records according to this filter - may be null
+	 * @return message count 
+	 */
+	public int getCount(final Entity container, Filter filter)
+	{
+		return -1;  // Not Implemented
+	}
+
+	/**
+	 * Get messages filtered, sorted, and paged
+	 * @param container
+	 *        The container for this resource.
+	 * @param filter
+	 *        filter the records according to this filter - may be null
+	 * @param pager
+	 *        limit on the records returned - may be null
+	 * @return A list of Message objects that meet the criteria; may be empty
+	 *         returning null indicates - not implemened in Storage.
+	 */
+	public List getMessages(final Entity container, Filter filter, boolean asc, PagingPosition pager)
+	{
+		return null; // Not Implemented
 	}
 
 	/**
