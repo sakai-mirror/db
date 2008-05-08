@@ -59,6 +59,7 @@ public class AdditionalHibernateMappingsImpl implements AdditionalHibernateMappi
 		for (int i = 0; i < this.mappingLocations.length; i++)
 		{
 			try {
+            logger.info("Loading hbm: " + mappingLocations[i]);
             config.addInputStream(VendorHbmTransformer.getTransformedMapping(this.mappingLocations[i].getInputStream()));
 			} catch (MappingException me) {
 				throw new MappingException("Failed to load "+ this.mappingLocations[i], me);

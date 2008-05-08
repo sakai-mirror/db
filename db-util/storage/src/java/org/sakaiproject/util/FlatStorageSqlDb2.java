@@ -29,4 +29,10 @@ import org.apache.commons.logging.LogFactory;
  */
 public class FlatStorageSqlDb2 extends FlatStorageSqlDefault
 {
+	public String getIdField(String table)
+	{
+      // for DB2, the DEFAULT keyword must be specified for the identity column
+      // when it is included in the list of columns on the INSERT
+		return ", DEFAULT";
+	}
 }

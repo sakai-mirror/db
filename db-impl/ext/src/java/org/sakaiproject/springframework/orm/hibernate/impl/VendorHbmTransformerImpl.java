@@ -67,6 +67,7 @@ public class VendorHbmTransformerImpl implements VendorHbmTransformer {
             try {
                 if (xsl != null) xsl.close();
             } catch (Exception e) {}
+
         }
     }
 
