@@ -365,11 +365,8 @@ public class BaseDbFlatStorage
 		{
 			sql = flatStorageSql.getSelectFieldsSql1(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
 					m_resourceTableSortField1, m_resourceTableSortField2, 0, 0);
-			String realTablename = m_resourceTableName;
-			m_resourceTableName = "TEMP_QUERY";
 			sql += flatStorageSql.getSelectFieldsSql2(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
 					m_resourceTableSortField1, m_resourceTableSortField2, 0, 0);
-			m_resourceTableName = realTablename;
 			fields = flatStorageSql.getSelectFieldsFields(first, last);
 		}
 		else
@@ -576,13 +573,10 @@ public class BaseDbFlatStorage
 
 			sql = flatStorageSql.getSelectFieldsSql3(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
 					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
-			String realTablename = m_resourceTableName;
-			m_resourceTableName = "TEMP_QUERY";
 			sql += flatStorageSql.getSelectFieldsSql4(m_resourceTableName, fieldList(m_resourceTableReadFields, null), m_resourceTableIdField,
 					m_resourceTableSortField1, m_resourceTableSortField2, (first - 1), (last - first + 1), join, where, order);
 			fields[fields.length - 2] = new Long(first);
 			fields[fields.length - 1] = new Long(last);
-			m_resourceTableName = realTablename;
 		}
 		else
 		{
