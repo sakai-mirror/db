@@ -44,6 +44,7 @@ public class FlatStorageSqlDb2 extends FlatStorageSqlDefault
 
    public String getSelectFieldsSql2(String table, String fieldList, String idField, String sortField1, String sortField2, int begin, int end)
    {
+      fieldList = fieldList.replaceAll(table + "\\.", "TEMP_QUERY.");
       return "select " + fieldList + " from TEMP_QUERY where rank between ? and ? order by TEMP_QUERY." + sortField1
             + (sortField2 == null ? "" : ", TEMP_QUERY." + sortField2) + (!idField.equals(sortField1) ? (", TEMP_QUERY." + idField) : "");
    }
