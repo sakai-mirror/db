@@ -15,26 +15,18 @@ public class DB2Dialect9 extends DB2Dialect {
 
     public DB2Dialect9() {
        super();
-       //registerColumnType( Types.VARBINARY, "blob(1000000)" );
        registerColumnType( Types.VARBINARY, "LONG VARCHAR FOR BIT DATA" );
-       registerColumnType( Types.CLOB, "clob(1000000)" );
-       registerColumnType( Types.BLOB, "blob(1000000)" );
-       //registerColumnType( Types.VARBINARY, 32762, "varchar($l) for bit data" );
-       //registerHibernateType(Types.LONGVARCHAR, 65535, "text");
-        //registerHibernateType(Types.VARBINARY, 32000, "binary"); 
+       registerColumnType( Types.VARCHAR, "clob(1000000000)" );
+       registerColumnType( Types.VARCHAR, 1000000000, "clob($l)" );
+       registerColumnType( Types.VARCHAR, 32704, "varchar($l)" );
+
+
+       //according to the db2 docs the max for clob and blob should be 2147438647, but this isn't working for me
+       // possibly something to do with how my database is configured ?
+       registerColumnType( Types.CLOB, "clob(1000000000)" );
+       registerColumnType( Types.CLOB, 1000000000, "clob($l)" );
+       registerColumnType( Types.BLOB, "blob(1000000000)" );
+       registerColumnType( Types.BLOB, 1000000000, "blob($l)" );
 
     }
-    /*
-    public String getCastTypeName(int code) {
-        if ( code==Types.VARBINARY ) {
-            return "binary";
-        }
-        else if ( code==Types.BLOB ) {
-            return "binary";
-        }
-        else {
-            return super.getCastTypeName( code );
-        }
-    } */
-
 }
