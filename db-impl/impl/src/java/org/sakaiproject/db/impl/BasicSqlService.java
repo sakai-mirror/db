@@ -30,13 +30,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
@@ -2039,8 +2033,9 @@ public abstract class BasicSqlService implements SqlService
 					// and ALSO treat a zero-length Java string as an SQL null
 					// This makes sure that Oracle vs MySQL use the same value
 					// for null.
-					pstmt.setObject(pos, null);
-					pos++;
+               sqlServiceSql.setNull(pstmt, pos);
+
+               pos++;
 				}
 				else if (fields[i] instanceof Time)
 				{
@@ -2073,7 +2068,7 @@ public abstract class BasicSqlService implements SqlService
 				}
 				else if ( fields[i] instanceof byte[] ) 
 				{
-					pstmt.setBytes(pos, (byte[])fields[i]);
+               sqlServiceSql.setBytes(pstmt, (byte[])fields[i], pos);
 					pos++;
 				}
 				

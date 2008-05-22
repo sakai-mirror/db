@@ -1434,6 +1434,9 @@ public class BaseDbDoubleStorage
 			{
 				buf.append("select top (" + limitedToLatest + ") XML from " + m_resourceTableName);
 			}
+         else if ("db2".equals(m_sql.getVendor())) {
+            buf.append("select XML from " + m_resourceTableName);
+         }
 			else
 			// if ("hsqldb".equals(m_sql.getVendor()))
 			{
@@ -1504,7 +1507,13 @@ public class BaseDbDoubleStorage
 				// explicitly do nothing here, we handle with 'top' clause above
 				useLimitField = false;
 			}
-			else
+         else if ("db2".equals(m_sql.getVendor()))
+         {
+            buf.append(" FETCH FIRST " + limitedToLatest + " ROWS ONLY");
+            useLimitField = false;
+         }
+
+         else
 			// if ("hsqldb".equals(m_sql.getVendor()))
 			{
 				// the limit clause appears elsewhere in HSQLDB SQL statements, not here.
