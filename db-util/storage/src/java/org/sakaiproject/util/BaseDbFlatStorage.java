@@ -43,6 +43,10 @@ import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.time.cover.TimeService;
 
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.Element;
+
 /**
  * <p>
  * BaseDbFlatStorage is a class that stores Resources (of some type) in a database, provides (optional) locked access, <br />
@@ -184,6 +188,30 @@ public class BaseDbFlatStorage
 		m_resourceTableInsertValues = resourceTableFields;
 
 		setFlatStorageSql(m_sql.getVendor());
+	}
+
+	/**
+	 * Get the cache manager for this table
+	 *
+	 * @param table
+	 */
+	protected Cache getCache(String table)
+	{
+		if ( table == null ) return null;
+		CacheManager singletonManager = CacheManager.getInstance();
+
+		String cacheName = "DB-Flat:"+table;
+		Cache myCache = singletonManager.getCache(cacheName);
+		if ( myCache == null ) 
+		{
+			singletonManager.addCache(cacheName);
+			myCache = singletonManager.getCache(cacheName);
+			if ( myCache != null )
+			{
+				M_log.info("Added Memory cache for "+cacheName);
+			}
+		}
+		return myCache;
 	}
 
 	/**
@@ -1018,6 +1046,43 @@ public class BaseDbFlatStorage
 		// the properties to fill in
 		final ResourcePropertiesEdit props = p;
 
+		Cache myCache = getCache(table);
+		String cacheKey = table + ":" + idField + ":" + id;
+
+		if ( myCache != null )
+		{
+			//System.out.println("CHECKING CACHE cacheKey="+cacheKey);
+			Element elem = myCache.get(cacheKey);
+			if ( elem != null )
+			{
+				Object obj = elem.getObjectValue();
+				if ( obj != null && obj instanceof ResourcePropertiesEdit ) 
+				{
+					// Clone the properties - do not return the real value
+					ResourcePropertiesEdit re = (ResourcePropertiesEdit) obj;
+// Addall
+					props.addAll(re);
+/*
+					Iterator iter = re.getPropertyNames();
+					for (Iterator it=re.getPropertyNames(); it.hasNext(); ) 
+					{
+						String name = (String) it.next();
+						String value = re.getProperty(name);
+						if ((name != null) && (value != null))
+						{
+							props.addProperty(name, value);
+						}
+					}
+*/
+
+System.out.println("CACHE HIT cacheKey="+cacheKey+" props="+props);
+Throwable t = new Throwable();
+t.printStackTrace();
+					return;
+				}
+			}
+		}
+
 		// get the properties from the db
 		// ASSUME: NAME, VALUE for fields
 		String sql = flatStorageSql.getSelectNameValueSql(table, idField);
@@ -1049,6 +1114,12 @@ public class BaseDbFlatStorage
 				}
 			}
 		});
+
+		if ( myCache != null )
+		{
+System.out.println("CACHE PUT cacheKey="+cacheKey+" props="+props);
+			myCache.put(new Element(cacheKey,props));
+		}
 	}
 
 	/**
@@ -1155,6 +1226,14 @@ public class BaseDbFlatStorage
 		// if not properties table set, skip it
 		if (table == null) return;
 		if (props == null) return;
+
+		Cache myCache = getCache(table);
+		String cacheKey = table + ":" + idField + ":" + id;
+System.out.println("CACHE REMOVE cacheKey="+cacheKey+" cache="+myCache);
+		if ( myCache != null )
+		{
+			myCache.remove(cacheKey);
+		}
 
 		// do this in a transaction
 		m_sql.transact(new Runnable()
