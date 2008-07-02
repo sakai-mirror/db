@@ -42,6 +42,7 @@ import org.sakaiproject.entity.api.ResourceProperties;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
 import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.time.cover.TimeService;
+import org.sakaiproject.component.cover.ServerConfigurationService;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Cache;
@@ -198,6 +199,15 @@ public class BaseDbFlatStorage
 	protected Cache getCache(String table)
 	{
 		if ( table == null ) return null;
+		String config =  ServerConfigurationService.getString("DbFlatPropertiesCache");
+		if ( config == null ) return null;
+		if ( config.indexOf(":none:") >= 0 ) return null;
+		if ( config.indexOf(":all:") < 0 )
+		{
+			if ( config.indexOf(":"+table+":") < 0 ) return null;
+		}
+
+		// We are allowed to cache for this table
 		CacheManager singletonManager = CacheManager.getInstance();
 
 		String cacheName = "DB-Flat:"+table;
@@ -1051,7 +1061,7 @@ public class BaseDbFlatStorage
 
 		if ( myCache != null )
 		{
-			//System.out.println("CHECKING CACHE cacheKey="+cacheKey);
+			// System.out.println("CHECKING CACHE cacheKey="+cacheKey);
 			Element elem = myCache.get(cacheKey);
 			if ( elem != null )
 			{
@@ -1060,24 +1070,9 @@ public class BaseDbFlatStorage
 				{
 					// Clone the properties - do not return the real value
 					ResourcePropertiesEdit re = (ResourcePropertiesEdit) obj;
-// Addall
 					props.addAll(re);
-/*
-					Iterator iter = re.getPropertyNames();
-					for (Iterator it=re.getPropertyNames(); it.hasNext(); ) 
-					{
-						String name = (String) it.next();
-						String value = re.getProperty(name);
-						if ((name != null) && (value != null))
-						{
-							props.addProperty(name, value);
-						}
-					}
-*/
-
-System.out.println("CACHE HIT cacheKey="+cacheKey+" props="+props);
-Throwable t = new Throwable();
-t.printStackTrace();
+					// System.out.println("CACHE HIT cacheKey="+cacheKey);
+					M_log.debug("CACHE HIT cacheKey="+cacheKey);
 					return;
 				}
 			}
@@ -1117,7 +1112,7 @@ t.printStackTrace();
 
 		if ( myCache != null )
 		{
-System.out.println("CACHE PUT cacheKey="+cacheKey+" props="+props);
+			// System.out.println("CACHE PUT cacheKey="+cacheKey+" props="+props);
 			myCache.put(new Element(cacheKey,props));
 		}
 	}
@@ -1229,9 +1224,9 @@ System.out.println("CACHE PUT cacheKey="+cacheKey+" props="+props);
 
 		Cache myCache = getCache(table);
 		String cacheKey = table + ":" + idField + ":" + id;
-System.out.println("CACHE REMOVE cacheKey="+cacheKey+" cache="+myCache);
 		if ( myCache != null )
 		{
+			// System.out.println("CACHE REMOVE cacheKey="+cacheKey+" cache="+myCache);
 			myCache.remove(cacheKey);
 		}
 
