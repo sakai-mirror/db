@@ -50,7 +50,7 @@ import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.javax.Filter;
 import org.sakaiproject.javax.Restriction;
 import org.sakaiproject.javax.Order;
-import org.sakaiproject.javax.Query;
+import org.sakaiproject.javax.Search;
 import org.sakaiproject.javax.SearchFilter;
 
 /**
@@ -919,12 +919,12 @@ public class BaseDbDoubleStorage
 		if ( filter == null ) return pos;
 		if ( pos != null )
 		{
-			M_log.warn("The use of methods with PagingPosition should switch to using Query (SAK-13584) - Chuck");
+			M_log.warn("The use of methods with PagingPosition should switch to using Search (SAK-13584) - Chuck");
 			return pos;
 		}
-		if ( filter instanceof Query )
+		if ( filter instanceof Search )
 		{
-			Query q = (Query) filter;
+			Search q = (Search) filter;
 			if ( q.getLimit() > 0 && q.getLimit() >= q.getStart() ) 
 			{
 				return new PagingPosition((int) q.getStart(), (int) q.getLimit());
@@ -956,9 +956,9 @@ public class BaseDbDoubleStorage
         
 		// Get the orders and get the ORDER BY clause
 		Order[] orders = null;
-		if ( softFilter instanceof Query ) 
+		if ( softFilter instanceof Search ) 
 		{
-			orders = ((Query) softFilter).getOrders();
+			orders = ((Search) softFilter).getOrders();
 		}
 		String orderString = doubleStorageSql.getOrderClause(orders,  m_resourceTableOrderField, asc);
 
@@ -989,7 +989,7 @@ public class BaseDbDoubleStorage
 		String sql = doubleStorageSql.getSelectXml5filterSql(m_resourceTableName, 
 				m_resourceTableContainerIdField, orderString, sqlFilter);
 	
-		// Add Paging to the Query if requested
+		// Add Paging to the Search if requested
 		// TODO: Someday make this think Filter and emulate PagingPosition
 		boolean pagedInSql = false;
 		if ( pager != null )
