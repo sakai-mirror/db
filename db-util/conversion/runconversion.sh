@@ -34,7 +34,7 @@ Usage:
       properties
              the configuration file 
 eg
-    runconversion.sh -j $M2_HOME/repository/org/sakaiproject/sakai-content-impl/SNAPSHOT/sakai-content-impl-SNAPSHOT.jar convertcontent.config
+    runconversion.sh -j $M2_HOME/repository/org/sakaiproject/sakai-content-impl/M2/sakai-content-impl-M2.jar convertcontent.config
 USAGE
      exit 2
    else 
@@ -47,15 +47,15 @@ CLASSPATH="$CLASSPATH":"$m2repository"/commons-dbcp/commons-dbcp/1.2.1/commons-d
 CLASSPATH="$CLASSPATH":"$m2repository"/commons-logging/commons-logging/1.0.4/commons-logging-1.0.4.jar
 CLASSPATH="$CLASSPATH":"$m2repository"/commons-pool/commons-pool/1.3/commons-pool-1.3.jar
 CLASSPATH="$CLASSPATH":"$m2repository"/log4j/log4j/1.2.9/log4j-1.2.9.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-content-api/SNAPSHOT/sakai-content-api-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-content-impl/SNAPSHOT/sakai-content-impl-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-db-conversion/SNAPSHOT/sakai-db-conversion-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-db-storage/SNAPSHOT/sakai-db-storage-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-entity-api/SNAPSHOT/sakai-entity-api-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-entity-util/SNAPSHOT/sakai-entity-util-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util-api/SNAPSHOT/sakai-util-api-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util-log/SNAPSHOT/sakai-util-log-SNAPSHOT.jar
-CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util/SNAPSHOT/sakai-util-SNAPSHOT.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-content-api/M2/sakai-content-api-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-content-impl/M2/sakai-content-impl-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-db-conversion/M2/sakai-db-conversion-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-db-storage/M2/sakai-db-storage-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-entity-api/M2/sakai-entity-api-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-entity-util/M2/sakai-entity-util-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util-api/M2/sakai-util-api-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util-log/M2/sakai-util-log-M2.jar
+CLASSPATH="$CLASSPATH":"$m2repository"/org/sakaiproject/sakai-util/M2/sakai-util-M2.jar
 
 # For Cygwin, ensure paths are in the proper format.
 if $cygwin; then
