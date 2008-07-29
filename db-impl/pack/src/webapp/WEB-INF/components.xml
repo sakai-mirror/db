@@ -13,7 +13,8 @@
         
     <bean id="org.sakaiproject.db.api.SqlService"
 			class="org.sakaiproject.db.impl.BasicSqlService"
-			init-method="init" destroy-method="destroy" singleton="true">
+			init-method="init" destroy-method="destroy" singleton="true"
+            depends-on="db.cache.SAKAI_SITE,db.cache.SAKAI_SITE_PROPERTY,db.cache.SAKAI_SITE_PAGE_PROPERTY,db.cache.SAKAI_REALM_PROPERTY">
 
 		<lookup-method name="usageSessionService" bean="org.sakaiproject.event.api.UsageSessionService" />
 		<lookup-method name="threadLocalManager" bean="org.sakaiproject.thread_local.api.ThreadLocalManager" />
@@ -184,9 +185,19 @@
 
 	</bean>
 
+    <!-- Uncomment this bean and comment out the following 2 beans below to remove the DB proxy (SAK-12458) -->
+    <!-- <bean id="javax.sql.DataSource" parent="javax.sql.BaseDataSource" /> -->
+
 	<!-- Shared DataSource for all pooled database connections -->
-	<bean id="javax.sql.DataSource" parent="javax.sql.BaseDataSource">
-	</bean>
+	<bean id="javax.sql.TargetDataSource" parent="javax.sql.BaseDataSource" />
+
+    <!-- Proxy which will keep only get the connection if one is actually needed,
+        this is especially helpful when using hibernate or wrapping transactions around requests
+        because it keeps the connection from being opened and held if it is not needed -->
+    <bean id="javax.sql.DataSource" class="org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy">
+       <property name="targetDataSource"><ref local="javax.sql.TargetDataSource" /></property>
+    </bean>
+    <!-- End changes for SAK-12458 -->
 
 	<!-- The "slow" connection pool for streaming downloads from db -->
 	<bean id="javax.sql.LongDataSource"
@@ -268,8 +279,33 @@
     	<property name="timeToLive" ><value>300</value></property>
     	<property name="timeToIdle" ><value>600</value></property>
   	</bean>
-	
-	<!-- enables JMX on hibernate -->
+
+    <!-- beans for use in caching DB flat (uses defaults) -->
+    <bean id="db.cache.SAKAI_SITE"
+           class="org.springframework.cache.ehcache.EhCacheFactoryBean">
+       <property name="cacheManager" ref="org.sakaiproject.memory.api.MemoryService.cacheManager" />
+       <property name="cacheName" value="org.sakaiproject.db.BaseDbFlatStorage.SAKAI_SITE" />
+    </bean>
+
+    <bean id="db.cache.SAKAI_SITE_PROPERTY"
+           class="org.springframework.cache.ehcache.EhCacheFactoryBean">
+       <property name="cacheManager" ref="org.sakaiproject.memory.api.MemoryService.cacheManager" />
+       <property name="cacheName" value="org.sakaiproject.db.BaseDbFlatStorage.SAKAI_SITE_PROPERTY" />
+    </bean>
+
+    <bean id="db.cache.SAKAI_SITE_PAGE_PROPERTY"
+           class="org.springframework.cache.ehcache.EhCacheFactoryBean">
+       <property name="cacheManager" ref="org.sakaiproject.memory.api.MemoryService.cacheManager" />
+       <property name="cacheName" value="org.sakaiproject.db.BaseDbFlatStorage.SAKAI_SITE_PAGE_PROPERTY" />
+    </bean>
+
+    <bean id="db.cache.SAKAI_REALM_PROPERTY"
+           class="org.springframework.cache.ehcache.EhCacheFactoryBean">
+       <property name="cacheManager" ref="org.sakaiproject.memory.api.MemoryService.cacheManager" />
+       <property name="cacheName" value="org.sakaiproject.db.BaseDbFlatStorage.SAKAI_REALM_PROPERTY" />
+    </bean>
+
+    <!-- enables JMX on hibernate -->
 	<bean id="org.sakaiproject.springframework.orm.hibernate.SessionFactoryBase.jmxAgent" 
   			class="org.sakaiproject.springframework.orm.hibernate.HibernateJMXAgent"
   			init-method="init" >
