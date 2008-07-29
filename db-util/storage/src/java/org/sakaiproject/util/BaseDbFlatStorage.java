@@ -69,7 +69,9 @@ import org.sakaiproject.memory.cover.MemoryServiceLocator;
  */
 public class BaseDbFlatStorage
 {
-	/** Our logger. */
+	private static final String CACHE_NAME_PREFIX = "org.sakaiproject.db.BaseDbFlatStorage.";
+
+   /** Our logger. */
 	private static Log M_log = LogFactory.getLog(BaseDbFlatStorage.class);
 
 	/** Table name for resource records. */
@@ -210,7 +212,7 @@ public class BaseDbFlatStorage
 			if ( config.indexOf(":"+table+":") < 0 ) return null;
 		}
 
-		String cacheName = "DB-Flat."+table;
+		String cacheName = CACHE_NAME_PREFIX+table;
 		MemoryService memoryService = MemoryServiceLocator.getInstance();
 		if ( memoryService == null ) return null;
 		Cache myCache = memoryService.newCache(cacheName);
