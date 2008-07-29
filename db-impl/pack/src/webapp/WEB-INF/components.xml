@@ -183,26 +183,16 @@
 			<value>900000</value>
 		</property>
 
-	</bean>
-
-    <!-- Uncomment this bean and comment out the following 2 beans below to remove the DB proxy (SAK-12458) -->
-    <!-- <bean id="javax.sql.DataSource" parent="javax.sql.BaseDataSource" /> -->
-
-	<!-- Shared DataSource for all pooled database connections -->
-	<bean id="javax.sql.TargetDataSource" parent="javax.sql.BaseDataSource" />
-
-    <!-- Proxy which will keep only get the connection if one is actually needed,
-        this is especially helpful when using hibernate or wrapping transactions around requests
-        because it keeps the connection from being opened and held if it is not needed -->
-    <bean id="javax.sql.DataSource" class="org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy">
-       <property name="targetDataSource"><ref local="javax.sql.TargetDataSource" /></property>
     </bean>
-    <!-- End changes for SAK-12458 -->
 
-	<!-- The "slow" connection pool for streaming downloads from db -->
-	<bean id="javax.sql.LongDataSource"
-			parent="javax.sql.BaseDataSource">
-	</bean>
+    <!-- Shared DataSource for all pooled database connections -->
+    <bean id="javax.sql.DataSource" parent="javax.sql.BaseDataSource">
+    </bean>
+
+    <!-- The "slow" connection pool for streaming downloads from db -->
+    <bean id="javax.sql.LongDataSource"
+            parent="javax.sql.BaseDataSource">
+    </bean>
 
 	<!-- Base Hibernate SessionFactory -->
 	<bean
