@@ -44,9 +44,9 @@ import org.sakaiproject.event.cover.UsageSessionService;
 import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 
-import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.Element;
+import org.sakaiproject.memory.api.Cache;
+import org.sakaiproject.memory.api.MemoryService;
+import org.sakaiproject.memory.cover.MemoryServiceLocator;
 
 /**
  * <p>
@@ -210,20 +210,10 @@ public class BaseDbFlatStorage
 			if ( config.indexOf(":"+table+":") < 0 ) return null;
 		}
 
-		// We are allowed to cache for this table
-		CacheManager singletonManager = CacheManager.getInstance();
-
-		String cacheName = "DB-Flat:"+table;
-		Cache myCache = singletonManager.getCache(cacheName);
-		if ( myCache == null ) 
-		{
-			singletonManager.addCache(cacheName);
-			myCache = singletonManager.getCache(cacheName);
-			if ( myCache != null )
-			{
-				M_log.info("Added Memory cache for "+cacheName);
-			}
-		}
+		String cacheName = "DB-Flat."+table;
+		MemoryService memoryService = MemoryServiceLocator.getInstance();
+		if ( memoryService == null ) return null;
+		Cache myCache = memoryService.newCache(cacheName);
 		return myCache;
 	}
 
@@ -1071,19 +1061,15 @@ public class BaseDbFlatStorage
 		if ( myCache != null )
 		{
 			// System.out.println("CHECKING CACHE cacheKey="+cacheKey);
-			Element elem = myCache.get(cacheKey);
-			if ( elem != null )
+			Object obj = myCache.get(cacheKey);
+			if ( obj != null && obj instanceof ResourcePropertiesEdit ) 
 			{
-				Object obj = elem.getObjectValue();
-				if ( obj != null && obj instanceof ResourcePropertiesEdit ) 
-				{
-					// Clone the properties - do not return the real value
-					ResourcePropertiesEdit re = (ResourcePropertiesEdit) obj;
-					props.addAll(re);
-					// System.out.println("CACHE HIT cacheKey="+cacheKey);
-					M_log.debug("CACHE HIT cacheKey="+cacheKey);
-					return;
-				}
+				// Clone the properties - do not return the real value
+				ResourcePropertiesEdit re = (ResourcePropertiesEdit) obj;
+				props.addAll(re);
+				// System.out.println("CACHE HIT cacheKey="+cacheKey);
+				M_log.debug("CACHE HIT cacheKey="+cacheKey);
+				return;
 			}
 		}
 
@@ -1122,7 +1108,7 @@ public class BaseDbFlatStorage
 		if ( myCache != null )
 		{
 			// System.out.println("CACHE PUT cacheKey="+cacheKey+" props="+props);
-			myCache.put(new Element(cacheKey,props));
+			myCache.put(cacheKey,props);
 		}
 	}
 
